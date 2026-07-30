@@ -1,0 +1,34 @@
+# Chromium kiosk showing the test output page on the HDMI display.
+# Runs in the graphical user session (Xorg, per §6). FR-06/FR-10: borderless
+# full screen, no cursor, no chrome; --autoplay-policy allows the audio
+# pattern without a user gesture.
+#
+# Installed as a *user* unit for the auto-logged-in kiosk user:
+#   /usr/lib/systemd/user/tl-commissioning-kiosk.service
+[Unit]
+Description=Transition Layer commissioning test source kiosk output
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# Wait until the backend answers HTTP before starting the browser so the
+# page connects first try (FR-07 holding screen shows immediately after).
+# Note: /health reports 503 until this kiosk connects, so only reachability
+# is checked here, not health.
+ExecStartPre=/bin/sh -c 'until curl -s -o /dev/null http://127.0.0.1:8080/health || [ $SECONDS -gt 45 ]; do sleep 1; done; exit 0'
+ExecStart=/usr/bin/chromium-browser \
+    --kiosk \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-features=TranslateUI \
+    --autoplay-policy=no-user-gesture-required \
+    --check-for-update-interval=31536000 \
+    --user-data-dir=%h/.tl-kiosk-profile \
+    --app=http://127.0.0.1:8080/kiosk/
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

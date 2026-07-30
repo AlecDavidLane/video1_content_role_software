@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Commissioning Report {{ session.id }}</title>
+<style>
+  :root { --accent: {{ branding.accent_colour }}; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: #1a1d21; margin: 0; font-size: 11px; line-height: 1.45;
+  }
+  @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+  h1 { font-size: 22px; margin: 0 0 2px; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); border-bottom: 2px solid var(--accent);
+    padding-bottom: 3px; margin: 22px 0 8px;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+  th, td { text-align: left; padding: 4px 8px; vertical-align: top; border-bottom: 1px solid #e2e5e9; }
+  th { background: #f4f6f8; font-weight: 600; white-space: nowrap; }
+  .cover { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .logo { max-height: 52px; max-width: 220px; }
+  .logo-placeholder {
+    display: inline-block; padding: 10px 16px; border: 2px solid var(--accent);
+    color: var(--accent); font-weight: 700; font-size: 15px; letter-spacing: 0.04em;
+  }
+  .status-banner {
+    margin: 12px 0; padding: 12px 16px; border-radius: 6px;
+    font-size: 18px; font-weight: 700; color: #fff;
+  }
+  .passed { background: #1d7a3e; }
+  .failed { background: #b3261e; }
+  .pill {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-weight: 600; font-size: 10px; color: #fff;
+  }
+  .pill.pass { background: #1d7a3e; }
+  .pill.fail { background: #b3261e; }
+  .muted { color: #5c636b; }
+  .kv td:first-child { font-weight: 600; width: 32%; white-space: nowrap; }
+  .evidence-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; }
+  .evidence-item { width: 46%; }
+  .evidence-item img { width: 100%; border: 1px solid #d5d9de; border-radius: 3px; }
+  .evidence-item .caption { font-size: 10px; color: #5c636b; margin-top: 2px; }
+  .statement {
+    border-left: 4px solid var(--accent); background: #f4f6f8;
+    padding: 10px 14px; font-style: italic; margin: 10px 0;
+  }
+  .footer {
+    margin-top: 26px; padding-top: 8px; border-top: 1px solid #d5d9de;
+    font-size: 9px; color: #5c636b; display: flex; justify-content: space-between;
+  }
+  .attempt-note { font-size: 10px; }
+  .section { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div>
+    <h1>Commissioning Report</h1>
+    <div class="muted">{{ branding.company_name }} &mdash; portable AV commissioning record</div>
+  </div>
+  <div>
+    {% if branding.logo_data_uri %}
+      <img class="logo" src="{{ branding.logo_data_uri }}" alt="{{ branding.company_name }}">
+    {% else %}
+      <span class="logo-placeholder">{{ branding.company_name }}</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="status-banner {{ 'passed' if overall_passed else 'failed' }}">
+  Overall result: {{ 'PASSED' if overall_passed else 'FAILED' }}
+</div>
+
+<table class="kv">
+  <tr><td>Project</td><td>{{ project.name if project else '' }}</td></tr>
+  <tr><td>Client</td><td>{{ project.client if project else '' }}</td></tr>
+  <tr><td>Site</td><td>{{ project.site if project else '' }}</td></tr>
+  <tr><td>Room / area</td><td>{{ session.room }}</td></tr>
+  <tr><td>Session reference</td><td>{{ session.id }}</td></tr>
+  <tr><td>Engineer</td><td>{{ session.engineer }}</td></tr>
+  <tr><td>Completed</td><td>{{ session.completed_at or '' }}</td></tr>
+  {% if session.reopened_at %}
+  <tr><td>Reopened</td><td>{{ session.reopened_at }} (revision event recorded)</td></tr>
+  {% endif %}
+</table>
+
+<div class="section">
+<h2>Test source details</h2>
+<table class="kv">
+  <tr><td>Appliance ID</td><td>{{ test_source.appliance_id }} &mdash; {{ test_source.friendly_name }} (SOURCE {{ test_source.source_number }})</td></tr>
+  <tr><td>Hostname</td><td>{{ test_source.hostname }}</td></tr>
+  <tr><td>Operating system</td><td>{{ test_source.os_version }}</td></tr>
+  <tr><td>Application version</td><td>{{ test_source.app_version }}</td></tr>
+  <tr><td>Role version</td><td>{{ test_source.role_version or 'n/a' }}</td></tr>
+  <tr><td>Output connector</td><td>{{ test_source.connector or 'not recorded' }}</td></tr>
+  <tr><td>Output mode</td><td>{{ test_source.mode or 'not recorded' }}</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Defined signal path</h2>
+<table class="kv">
+  {% for stage, label in [('source','Source'), ('transmitter','Transmitter / encoder'), ('network','Network / switching stage'), ('receiver','Receiver / decoder'), ('destination','Destination')] %}
+    {% if session.endpoints.get(stage) %}
+    <tr><td>{{ label }}</td><td>{{ session.endpoints[stage] }}</td></tr>
+    {% endif %}
+  {% endfor %}
+  <tr><td>Description</td><td>{{ session.signal_path_text }}</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Results</h2>
+<table>
+  <tr><th>Test</th><th>Expected observation</th><th>Latest result</th><th>When</th><th>Engineer</th><th>Retested</th></tr>
+  {% for r in results %}
+  <tr>
+    <td><strong>{{ r.name }}</strong></td>
+    <td>{{ r.expected_result }}</td>
+    <td>
+      {% if r.latest %}
+        <span class="pill {{ r.latest.result }}">{{ r.latest.result | upper }}</span>
+      {% else %}<span class="muted">not answered</span>{% endif %}
+    </td>
+    <td>{{ r.latest.answered_at if r.latest else '' }}</td>
+    <td>{{ r.latest.engineer if r.latest else '' }}</td>
+    <td>{{ 'Yes (' ~ (r.attempts | length) ~ ' attempts)' if r.retested else 'No' }}</td>
+  </tr>
+  {% if r.latest and r.latest.note %}
+  <tr><td></td><td colspan="5" class="attempt-note"><strong>Note:</strong> {{ r.latest.note }}</td></tr>
+  {% endif %}
+  {% endfor %}
+</table>
+</div>
+
+{% set all_evidence = [] %}
+{% for r in results %}{% for a in r.attempts %}{% for e in a.evidence %}
+  {% if all_evidence.append((r, a, e)) %}{% endif %}
+{% endfor %}{% endfor %}{% endfor %}
+{% if all_evidence %}
+<div class="section">
+<h2>Evidence</h2>
+{% for r in results %}
+  {% set test_evidence = [] %}
+  {% for a in r.attempts %}{% for e in a.evidence %}{% if test_evidence.append((a, e)) %}{% endif %}{% endfor %}{% endfor %}
+  {% if test_evidence %}
+  <p><strong>{{ r.name }}</strong></p>
+  <div class="evidence-grid">
+    {% for a, e in test_evidence %}
+    <div class="evidence-item">
+      {% if e.data_uri %}<img src="{{ e.data_uri }}" alt="Evidence photo">{% endif %}
+      <div class="caption">
+        {{ e.caption or 'No caption' }} &mdash; attempt {{ a.attempt_number }}
+        ({{ a.result | upper }}), {{ e.created_at }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+</div>
+{% endif %}
+
+{% if unresolved_failures %}
+<div class="section">
+<h2>Unresolved failures</h2>
+<table>
+  <tr><th>Test</th><th>Failure note</th><th>Recorded</th></tr>
+  {% for r in unresolved_failures %}
+  <tr>
+    <td><strong>{{ r.name }}</strong></td>
+    <td>{{ r.latest.note }}</td>
+    <td>{{ r.latest.answered_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+{% if soak %}
+<div class="section">
+<h2>Soak test</h2>
+<table class="kv">
+  <tr><td>Requested duration</td><td>{{ soak.requested_minutes }} minutes</td></tr>
+  <tr><td>Started</td><td>{{ soak.started_at }}</td></tr>
+  <tr><td>Ended</td><td>{{ soak.ended_at or 'not recorded' }}</td></tr>
+  <tr><td>Completion status</td><td>{{ soak.status }}</td></tr>
+  <tr><td>Faults recorded</td><td>{{ soak.fault_count }}</td></tr>
+</table>
+{% set soak_events = events | selectattr('event_type', 'in', ['output_connection', 'soak_completed']) | list %}
+{% if soak_events %}
+<table>
+  <tr><th>Time</th><th>Severity</th><th>Event</th></tr>
+  {% for e in soak_events %}
+  <tr><td>{{ e.created_at }}</td><td>{{ e.severity }}</td><td>{{ e.message }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+</div>
+{% endif %}
+
+<div class="statement">
+  The defined signal path was tested against the attached commissioning checklist
+  and the recorded results are shown in this report. This document is a
+  commissioning record produced with a portable test source; it is not a
+  calibrated measurement and does not certify compliance with any standard.
+</div>
+
+<div class="footer">
+  <span>Report {{ report_reference }} &middot; generated {{ generated_at }} &middot; app v{{ app_version }}</span>
+  <span>JSON checksum (SHA-256): {{ json_sha256[:16] }}&hellip;</span>
+</div>
+<div class="footer" style="border-top:none;margin-top:4px;">
+  <span>{{ branding.report_footer }}</span>
+</div>
+
+</body>
+</html>

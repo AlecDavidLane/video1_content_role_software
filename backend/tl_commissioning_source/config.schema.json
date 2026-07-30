@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transitionlayer.example/schemas/tl-commissioning-source-config.json",
+  "title": "Transition Layer Commissioning Test Source configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "appliance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "Unique appliance ID, e.g. TL-TESTSOURCE-01" },
+        "friendly_name": { "type": "string" },
+        "source_number": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "branding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "company_name": { "type": "string" },
+        "logo_path": { "type": "string", "description": "Absolute path to a PNG/SVG logo; empty uses the built-in placeholder" },
+        "accent_colour": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "report_footer": { "type": "string" }
+      }
+    },
+    "engineer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_name": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bind_host": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "external_url": { "type": "string" }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pin_hash": { "type": "string", "description": "Salted SHA-256 of the control PIN. Never exported." },
+        "pin_salt": { "type": "string", "description": "Salt for pin_hash. Never exported." },
+        "token_ttl_seconds": { "type": "integer", "minimum": 60 },
+        "setup_complete": { "type": "boolean" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preferred_connector": { "type": "string" },
+        "default_mode": { "type": "string", "pattern": "^$|^[0-9]+x[0-9]+@[0-9.]+$" }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preferred_sink": { "type": "string" }
+      }
+    },
+    "soak": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_minutes": { "type": "integer", "minimum": 1 },
+        "audio_enabled": { "type": "boolean" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "data_dir": { "type": "string" },
+        "reports_dir": { "type": "string" },
+        "evidence_dir": { "type": "string" },
+        "low_disk_warn_mb": { "type": "integer", "minimum": 0 },
+        "max_photo_mb": { "type": "integer", "minimum": 1 },
+        "report_retention_days": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chromium_path": { "type": "string" }
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "display_backend": { "enum": ["auto", "xrandr", "mock"] },
+        "audio_backend": { "enum": ["auto", "pactl", "mock"] }
+      }
+    }
+  }
+}

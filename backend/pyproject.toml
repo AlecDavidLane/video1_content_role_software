@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tl-commissioning-source"
+version = "0.1.0"
+description = "Transition Layer portable AV commissioning test source"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary - see LICENSE at repository root" }
+authors = [{ name = "Transition Layer" }]
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.30,<0.31",
+    "jinja2>=3.1,<4",
+    "pyyaml>=6.0,<7",
+    "pillow>=10.3,<11",
+    "python-multipart>=0.0.9,<0.1",
+    "qrcode>=7.4,<8",
+]
+
+[project.optional-dependencies]
+heic = ["pillow-heif>=0.16"]
+dev = ["pytest>=8", "httpx>=0.27", "jsonschema>=4.21"]
+
+[project.scripts]
+tl-source = "tl_commissioning_source.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tl_commissioning_source*"]
+
+[tool.setuptools.package-data]
+tl_commissioning_source = [
+    "migrations/*.sql",
+    "report_templates/*.html",
+    "static/**/*",
+    "kiosk/**/*",
+    "config.schema.json",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

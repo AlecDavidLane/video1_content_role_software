@@ -1,0 +1,24 @@
+# Pinned runtime dependencies for the recorded role version (§12).
+# Regenerate with: pip freeze after a clean install of backend/[.]
+annotated-types==0.8.0
+anyio==4.14.2
+click==8.4.2
+fastapi==0.115.14
+h11==0.16.0
+httptools==0.8.0
+idna==3.11
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+pillow==10.4.0
+pydantic==2.13.4
+pydantic_core==2.46.4
+pypng==0.20220715.0
+python-multipart==0.0.32
+PyYAML==6.0.1
+qrcode==7.4.2
+starlette==0.46.2
+typing_extensions==4.16.0
+uvicorn==0.30.6
+uvloop==0.22.1
+watchfiles==1.2.0
+websockets==17.0

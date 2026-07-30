@@ -1,0 +1,24 @@
+# Backend API + UI server. Restart-on-failure per FR-39/AC-10.
+[Unit]
+Description=Transition Layer commissioning test source backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated system user created by the package postinst; never root (NFR-09).
+User=tl-source
+Group=tl-source
+SupplementaryGroups=video audio
+Environment=TL_SOURCE_CONFIG=/etc/tl-commissioning-source/config.yaml
+ExecStart=/opt/transition-layer/commissioning-source/venv/bin/tl-source serve
+Restart=always
+RestartSec=2
+# Writable state lives under /var/lib and /var/log only.
+ReadWritePaths=/var/lib/tl-commissioning-source /var/log/tl-commissioning-source /etc/tl-commissioning-source
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
