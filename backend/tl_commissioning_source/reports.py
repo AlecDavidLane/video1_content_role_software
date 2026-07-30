@@ -229,7 +229,7 @@ def render_html(
     # Fall back to the bundled Transition Layer lockup when no custom logo
     # has been configured (replaceable via Maintenance or `tl-source init --logo`).
     logo_path = state.config.get("branding", "logo_path") or str(
-        TEMPLATE_DIR / "tl-logo-lockup.svg"
+        TEMPLATE_DIR / "tl-logo-lockup.png"
     )
     branding = {
         "company_name": state.config.get("branding", "company_name"),

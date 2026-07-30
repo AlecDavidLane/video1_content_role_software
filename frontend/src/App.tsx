@@ -19,7 +19,7 @@ function Chrome() {
   return (
     <div className="shell">
       <div className="topbar">
-        <img className="logo" src="/tl-logo-mark.svg" alt="" aria-hidden="true" />
+        <img className="logo" src="/tl-logo-mark.png" alt="" aria-hidden="true" />
         <span
           className={`statusdot ${status?.health_ok ? "ok" : "bad"}`}
           title={status?.health_ok ? "Healthy" : "Attention required"}
