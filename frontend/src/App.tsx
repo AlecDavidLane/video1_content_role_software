@@ -19,6 +19,7 @@ function Chrome() {
   return (
     <div className="shell">
       <div className="topbar">
+        <img className="logo" src="/tl-logo-mark.svg" alt="" aria-hidden="true" />
         <span
           className={`statusdot ${status?.health_ok ? "ok" : "bad"}`}
           title={status?.health_ok ? "Healthy" : "Attention required"}
@@ -26,8 +27,8 @@ function Chrome() {
         <span className="title">
           {status?.identity.friendly_name ?? "TL Test Source"}
         </span>
-        <span className="muted" style={{ fontSize: "0.8rem" }}>
-          {status ? `SOURCE ${status.identity.source_number}` : "offline"}
+        <span className="srcnum">
+          {status ? `SOURCE ${status.identity.source_number}` : "OFFLINE"}
         </span>
       </div>
 

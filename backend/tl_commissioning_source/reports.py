@@ -226,11 +226,16 @@ def render_html(
         autoescape=select_autoescape(["html"]),
     )
     template = env.get_template("report.html")
+    # Fall back to the bundled Transition Layer lockup when no custom logo
+    # has been configured (replaceable via Maintenance or `tl-source init --logo`).
+    logo_path = state.config.get("branding", "logo_path") or str(
+        TEMPLATE_DIR / "tl-logo-lockup.svg"
+    )
     branding = {
         "company_name": state.config.get("branding", "company_name"),
         "accent_colour": state.config.get("branding", "accent_colour"),
         "report_footer": state.config.get("branding", "report_footer"),
-        "logo_data_uri": _b64_image(state.config.get("branding", "logo_path") or ""),
+        "logo_data_uri": _b64_image(logo_path),
     }
     # Embed evidence derivatives as data URIs so the PDF is self-contained.
     for result in data["results"]:

@@ -130,7 +130,7 @@ function movingBorder(w, h, t, thickness) {
 }
 
 function drawIdentify(w, h, t) {
-  ctx.fillStyle = "#101418";
+  ctx.fillStyle = "#080c0f";
   ctx.fillRect(0, 0, w, h);
   const id = state.identity || {};
   movingBorder(w, h, t, Math.max(4, h * 0.012));
@@ -141,7 +141,7 @@ function drawIdentify(w, h, t) {
   ctx.fillText(`SOURCE ${id.source_number ?? "?"}`, w / 2, h * 0.36);
 
   fitText("", "600", h * 0.065);
-  ctx.fillStyle = "#9fd8cb";
+  ctx.fillStyle = "#00d4aa";
   ctx.fillText(id.friendly_name || "TL TEST SOURCE", w / 2, h * 0.47);
 
   fitText("", "400", h * 0.045);
@@ -149,12 +149,12 @@ function drawIdentify(w, h, t) {
   ctx.fillText(`${id.appliance_id || "UNSET"}  ·  ${modeText()}`, w / 2, h * 0.56);
   ctx.fillText(`Control: ${id.control_url || ""}`, w / 2, h * 0.63);
 
-  fitText("", "700", h * 0.085, "'Courier New', monospace");
+  fitText("", "700", h * 0.085, "'IBM Plex Mono', 'Courier New', monospace");
   ctx.fillStyle = "#ffd54a";
   ctx.fillText(clockText(new Date()), w / 2, h * 0.76);
 
-  fitText("", "500", h * 0.05, "'Courier New', monospace");
-  ctx.fillStyle = "#6fe3ff";
+  fitText("", "500", h * 0.05, "'IBM Plex Mono', 'Courier New', monospace");
+  ctx.fillStyle = "#4a9eff";
   ctx.fillText(`FRAME ${String(frameCounter).padStart(7, "0")}`, w / 2, h * 0.85);
 }
 
@@ -263,14 +263,14 @@ function drawColour(w, h, t) {
 }
 
 function drawMotion(w, h, t) {
-  ctx.fillStyle = "#101418";
+  ctx.fillStyle = "#080c0f";
   ctx.fillRect(0, 0, w, h);
   const speed = state.params.speed || 1;
   const s = t / 1000 * speed;
 
   // Horizontal sweep bar.
   const xPos = (s * w * 0.25) % (w + w * 0.04) - w * 0.02;
-  ctx.fillStyle = "#6fe3ff";
+  ctx.fillStyle = "#4a9eff";
   ctx.fillRect(xPos, 0, w * 0.02, h);
   // Vertical sweep bar.
   const yPos = (s * h * 0.25) % (h + h * 0.04) - h * 0.02;
@@ -302,15 +302,15 @@ function drawMotion(w, h, t) {
 
   ctx.textAlign = "center";
   ctx.fillStyle = "#ffd54a";
-  fitText("", "700", h * 0.07, "'Courier New', monospace");
+  fitText("", "700", h * 0.07, "'IBM Plex Mono', 'Courier New', monospace");
   ctx.fillText(clockText(new Date()), w / 2, h * 0.14);
-  ctx.fillStyle = "#6fe3ff";
-  fitText("", "500", h * 0.045, "'Courier New', monospace");
+  ctx.fillStyle = "#4a9eff";
+  fitText("", "500", h * 0.045, "'IBM Plex Mono', 'Courier New', monospace");
   ctx.fillText(`FRAME ${String(frameCounter).padStart(7, "0")}`, w / 2, h * 0.22);
 }
 
 function drawAudio(w, h, t) {
-  ctx.fillStyle = "#101418";
+  ctx.fillStyle = "#080c0f";
   ctx.fillRect(0, 0, w, h);
   const phase = audioEngine ? audioEngine.phase() : { channel: "-", level: 0 };
 
@@ -346,7 +346,7 @@ function drawAudio(w, h, t) {
   });
 
   fitText("", "500", h * 0.035);
-  ctx.fillStyle = "#9fd8cb";
+  ctx.fillStyle = "#00d4aa";
   ctx.fillText(
     audioEngine && audioEngine.speaking
       ? "Playing spoken channel identification"
@@ -356,7 +356,7 @@ function drawAudio(w, h, t) {
 }
 
 function drawMode(w, h, t) {
-  ctx.fillStyle = "#101418";
+  ctx.fillStyle = "#080c0f";
   ctx.fillRect(0, 0, w, h);
   movingBorder(w, h, t, Math.max(4, h * 0.012));
   ctx.textAlign = "center";
@@ -373,10 +373,10 @@ function drawMode(w, h, t) {
   ctx.fillText(active ? `Connector ${active.connector}` : "No display detected", w / 2, h * 0.67);
   // Live motion so a frozen scaler is obvious.
   const x = (t / 8) % w;
-  ctx.fillStyle = "#6fe3ff";
+  ctx.fillStyle = "#4a9eff";
   ctx.fillRect(x, h * 0.78, Math.max(6, w * 0.008), h * 0.12);
-  fitText("", "500", h * 0.04, "'Courier New', monospace");
-  ctx.fillStyle = "#6fe3ff";
+  fitText("", "500", h * 0.04, "'IBM Plex Mono', 'Courier New', monospace");
+  ctx.fillStyle = "#4a9eff";
   ctx.fillText(`FRAME ${String(frameCounter).padStart(7, "0")}`, w / 2, h * 0.96);
 }
 
