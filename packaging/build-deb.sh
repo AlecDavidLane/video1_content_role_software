@@ -43,11 +43,19 @@ cp "$REPO_ROOT/backend/tl_commissioning_source/config.schema.json" "$STAGE/etc/t
 cp "$REPO_ROOT/packaging/systemd/tl-commissioning-backend.service" "$STAGE/usr/lib/systemd/system/"
 cp "$REPO_ROOT/packaging/systemd/tl-commissioning-kiosk.service" "$STAGE/usr/lib/systemd/user/"
 
-# 3. Wheel + pinned requirements, installed into a venv in postinst
-#    (keeps the .deb architecture-independent of the build host's Python).
-(cd "$REPO_ROOT/backend" && python3 -m pip wheel --no-deps -w "$APP_DIR/wheels" . >/dev/null)
-python3 -m pip download -d "$APP_DIR/wheels" -r "$REPO_ROOT/packaging/requirements.lock" >/dev/null 2>&1 || \
-  echo "!! Offline wheel download failed; postinst will fall back to PyPI"
+# 3. Wheel + pinned requirements, installed into a venv in postinst.
+#    A throwaway build venv avoids PEP 668 "externally managed" refusals on
+#    newer Ubuntu hosts; --only-binary ensures we bundle real wheels for the
+#    host's Python (build host and appliance run the same OS image).
+python3 -m venv "$STAGE/buildvenv"
+"$STAGE/buildvenv/bin/pip" install --quiet --upgrade pip
+(cd "$REPO_ROOT/backend" && "$STAGE/buildvenv/bin/pip" wheel --no-deps -w "$APP_DIR/wheels" . >/dev/null)
+if ! "$STAGE/buildvenv/bin/pip" download --only-binary=:all: -d "$APP_DIR/wheels" \
+      -r "$REPO_ROOT/packaging/requirements.lock" >/dev/null; then
+  echo "!! Could not download binary wheels for this Python" \
+       "($(python3 --version)). Check packaging/requirements.lock pins" \
+       "publish wheels for it; postinst will fall back to PyPI." >&2
+fi
 cp "$REPO_ROOT/packaging/requirements.lock" "$APP_DIR/requirements.lock"
 
 # 4. Control files.
@@ -80,17 +88,27 @@ adduser tl-source video >/dev/null 2>&1 || true
 adduser tl-source audio >/dev/null 2>&1 || true
 
 # Virtualenv with pinned wheels (idempotent: reuse if version matches).
-if [ ! -x "$APP/venv/bin/tl-source" ]; then
+# --only-binary for locked deps: an appliance must never compile C
+# extensions. If no binary wheel exists for this Python, fail with a clear
+# message instead of a 300-line compiler error.
+if [ ! -x "$APP/venv/bin/pip" ]; then
     python3 -m venv "$APP/venv"
 fi
 "$APP/venv/bin/pip" install --quiet --upgrade pip
+PIPFLAGS="--only-binary=:all:"
 if ls "$APP"/wheels/*.whl >/dev/null 2>&1; then
-    "$APP/venv/bin/pip" install --quiet --no-index --find-links "$APP/wheels" \
+    "$APP/venv/bin/pip" install --quiet $PIPFLAGS --no-index --find-links "$APP/wheels" \
         -r "$APP/requirements.lock" tl-commissioning-source || \
-    "$APP/venv/bin/pip" install --quiet --find-links "$APP/wheels" \
-        -r "$APP/requirements.lock" tl-commissioning-source
+    "$APP/venv/bin/pip" install --quiet $PIPFLAGS --find-links "$APP/wheels" \
+        -r "$APP/requirements.lock" tl-commissioning-source || {
+        echo "ERROR: no binary wheels available for python3 ($(python3 --version))." >&2
+        echo "Supported reference OS is Ubuntu 24.04 LTS (Python 3.12); newer" >&2
+        echo "releases work when packaging/requirements.lock pins versions that" >&2
+        echo "publish wheels for that Python. See docs/install-and-test.md." >&2
+        exit 1
+    }
 else
-    "$APP/venv/bin/pip" install --quiet -r "$APP/requirements.lock" tl-commissioning-source
+    "$APP/venv/bin/pip" install --quiet $PIPFLAGS -r "$APP/requirements.lock" tl-commissioning-source
 fi
 
 # Config: install sample on first install only; never overwrite (idempotent).

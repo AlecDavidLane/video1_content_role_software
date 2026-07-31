@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tl-commissioning-source"
-version = "0.1.0"
+version = "0.1.1"
 description = "Transition Layer portable AV commissioning test source"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ dependencies = [
     "uvicorn[standard]>=0.30,<0.31",
     "jinja2>=3.1,<4",
     "pyyaml>=6.0,<7",
-    "pillow>=10.3,<11",
+    "pillow>=10.3,<13",
     "python-multipart>=0.0.9,<0.1",
     "qrcode>=7.4,<8",
 ]
