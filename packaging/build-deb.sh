@@ -57,16 +57,32 @@ python3 -m venv "$STAGE/buildvenv"
 # Python and bundle that lock in the package instead — the deb remains a
 # fully pinned artifact either way, and the reference lock is not touched.
 echo "==> Resolving pinned dependencies"
+lock_ok=false
 if "$STAGE/buildvenv/bin/pip" download --quiet --only-binary=:all: -d "$APP_DIR/wheels" \
       -r "$REPO_ROOT/packaging/requirements.lock" 2>/dev/null; then
-  cp "$REPO_ROOT/packaging/requirements.lock" "$APP_DIR/requirements.lock"
+  # Prove the bundle supports a fully OFFLINE install of the application —
+  # a dry-run against only the bundled wheels catches any transitive
+  # dependency missing from the lock before it can ship.
+  if "$STAGE/buildvenv/bin/pip" install --quiet --dry-run --only-binary=:all: --no-index \
+        --find-links "$APP_DIR/wheels" -r "$REPO_ROOT/packaging/requirements.lock" \
+        tl-commissioning-source >/dev/null 2>&1; then
+    cp "$REPO_ROOT/packaging/requirements.lock" "$APP_DIR/requirements.lock"
+    lock_ok=true
+  else
+    echo "!! Reference lock is incomplete for an offline install on this Python."
+  fi
 else
   echo "!! Reference lock has pins without binary wheels for $(python3 --version)."
+fi
+if [ "$lock_ok" != true ]; then
   echo "   Re-resolving dependencies for this Python (reference lock unchanged)."
   "$STAGE/buildvenv/bin/pip" install --quiet --only-binary=:all: "$REPO_ROOT/backend"
   "$STAGE/buildvenv/bin/pip" freeze --exclude tl-commissioning-source > "$APP_DIR/requirements.lock"
   "$STAGE/buildvenv/bin/pip" download --quiet --only-binary=:all: -d "$APP_DIR/wheels" \
       -r "$APP_DIR/requirements.lock"
+  "$STAGE/buildvenv/bin/pip" install --quiet --dry-run --only-binary=:all: --no-index \
+      --find-links "$APP_DIR/wheels" -r "$APP_DIR/requirements.lock" \
+      tl-commissioning-source >/dev/null
   echo "   Bundled lock for this build:"
   sed 's/^/     /' "$APP_DIR/requirements.lock"
 fi
@@ -110,16 +126,18 @@ fi
 "$APP/venv/bin/pip" install --quiet --upgrade pip
 PIPFLAGS="--only-binary=:all:"
 if ls "$APP"/wheels/*.whl >/dev/null 2>&1; then
-    "$APP/venv/bin/pip" install --quiet $PIPFLAGS --no-index --find-links "$APP/wheels" \
-        -r "$APP/requirements.lock" tl-commissioning-source || \
-    "$APP/venv/bin/pip" install --quiet $PIPFLAGS --find-links "$APP/wheels" \
-        -r "$APP/requirements.lock" tl-commissioning-source || {
-        echo "ERROR: no binary wheels available for python3 ($(python3 --version))." >&2
-        echo "Supported reference OS is Ubuntu 24.04 LTS (Python 3.12); newer" >&2
-        echo "releases work when packaging/requirements.lock pins versions that" >&2
-        echo "publish wheels for that Python. See docs/install-and-test.md." >&2
-        exit 1
-    }
+    if ! "$APP/venv/bin/pip" install --quiet $PIPFLAGS --no-index --find-links "$APP/wheels" \
+            -r "$APP/requirements.lock" tl-commissioning-source >/dev/null 2>&1; then
+        echo "Offline wheel bundle incomplete; retrying with PyPI..."
+        "$APP/venv/bin/pip" install --quiet $PIPFLAGS --find-links "$APP/wheels" \
+            -r "$APP/requirements.lock" tl-commissioning-source || {
+            echo "ERROR: no binary wheels available for python3 ($(python3 --version))." >&2
+            echo "Supported reference OS is Ubuntu 24.04 LTS (Python 3.12); newer" >&2
+            echo "releases work when packaging/requirements.lock pins versions that" >&2
+            echo "publish wheels for that Python. See docs/install-and-test.md." >&2
+            exit 1
+        }
+    fi
 else
     "$APP/venv/bin/pip" install --quiet $PIPFLAGS -r "$APP/requirements.lock" tl-commissioning-source
 fi
