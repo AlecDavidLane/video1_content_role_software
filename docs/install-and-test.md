@@ -5,12 +5,13 @@ functional test (~10 minutes), then the full kiosk appliance setup.
 
 > **Supported OS:** the reference target is **Ubuntu 24.04 LTS**
 > (Python 3.12) — use that for production appliances and the recorded
-> role. Newer Ubuntu releases (Python 3.13/3.14) also install, because
-> `packaging/requirements.lock` pins only versions that publish binary
-> wheels for those Pythons. The appliance never compiles C extensions:
-> if a wheel is missing for your Python, the install fails fast with a
-> clear message rather than a compiler error — fix by adjusting the lock
-> or using the reference OS.
+> role; `packaging/requirements.lock` is pinned against it. On a newer
+> Ubuntu release, `build-deb.sh` detects when a reference pin has no
+> binary wheel for that Python and automatically re-resolves a pin set
+> for the build host (printed during the build and bundled in the deb),
+> so the package still installs fully pinned. The appliance never
+> compiles C extensions — a missing wheel fails fast with a clear
+> message rather than a compiler error.
 For ongoing operations (update, rollback, backup) see
 [runbook.md](runbook.md); for on-site use see
 [operator-guide.md](operator-guide.md).

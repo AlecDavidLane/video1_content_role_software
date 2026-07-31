@@ -50,13 +50,26 @@ cp "$REPO_ROOT/packaging/systemd/tl-commissioning-kiosk.service" "$STAGE/usr/lib
 python3 -m venv "$STAGE/buildvenv"
 "$STAGE/buildvenv/bin/pip" install --quiet --upgrade pip
 (cd "$REPO_ROOT/backend" && "$STAGE/buildvenv/bin/pip" wheel --no-deps -w "$APP_DIR/wheels" . >/dev/null)
-if ! "$STAGE/buildvenv/bin/pip" download --only-binary=:all: -d "$APP_DIR/wheels" \
-      -r "$REPO_ROOT/packaging/requirements.lock" >/dev/null; then
-  echo "!! Could not download binary wheels for this Python" \
-       "($(python3 --version)). Check packaging/requirements.lock pins" \
-       "publish wheels for it; postinst will fall back to PyPI." >&2
+
+# The reference lock (packaging/requirements.lock) pins the Ubuntu 24.04 LTS
+# / Python 3.12 target. On a host whose Python has no binary wheels for one
+# of those pins, re-resolve within the pyproject constraints for THIS
+# Python and bundle that lock in the package instead — the deb remains a
+# fully pinned artifact either way, and the reference lock is not touched.
+echo "==> Resolving pinned dependencies"
+if "$STAGE/buildvenv/bin/pip" download --quiet --only-binary=:all: -d "$APP_DIR/wheels" \
+      -r "$REPO_ROOT/packaging/requirements.lock" 2>/dev/null; then
+  cp "$REPO_ROOT/packaging/requirements.lock" "$APP_DIR/requirements.lock"
+else
+  echo "!! Reference lock has pins without binary wheels for $(python3 --version)."
+  echo "   Re-resolving dependencies for this Python (reference lock unchanged)."
+  "$STAGE/buildvenv/bin/pip" install --quiet --only-binary=:all: "$REPO_ROOT/backend"
+  "$STAGE/buildvenv/bin/pip" freeze --exclude tl-commissioning-source > "$APP_DIR/requirements.lock"
+  "$STAGE/buildvenv/bin/pip" download --quiet --only-binary=:all: -d "$APP_DIR/wheels" \
+      -r "$APP_DIR/requirements.lock"
+  echo "   Bundled lock for this build:"
+  sed 's/^/     /' "$APP_DIR/requirements.lock"
 fi
-cp "$REPO_ROOT/packaging/requirements.lock" "$APP_DIR/requirements.lock"
 
 # 4. Control files.
 cat > "$STAGE/DEBIAN/control" <<EOF
