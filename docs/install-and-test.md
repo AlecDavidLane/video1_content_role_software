@@ -36,8 +36,12 @@ cd video1_content_role_software
 packaging/build-deb.sh
 ```
 
-This builds the React control UI, bundles pinned Python wheels and
-produces `dist/tl-commissioning-source_<version>_amd64.deb`.
+This builds the React control UI, bundles pinned Python wheels, downloads
+and bundles Google's standalone `chrome-headless-shell` for PDF
+generation (Ubuntu's snap chromium cannot be driven by a system service),
+and produces `dist/tl-commissioning-source_<version>_amd64.deb`. The
+build needs internet access; the shell download is cached under
+`packaging/.cache/` for subsequent builds.
 
 ### 3. Install
 

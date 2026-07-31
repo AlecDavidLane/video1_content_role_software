@@ -87,14 +87,58 @@ if [ "$lock_ok" != true ]; then
   sed 's/^/     /' "$APP_DIR/requirements.lock"
 fi
 
-# 4. Control files.
+# 4. Bundle chrome-headless-shell for PDF generation. Ubuntu's chromium is
+#    a snap, which the tl-source system service cannot drive (confinement
+#    denies its runtime dir, /var/lib and a shared /tmp), so the package
+#    carries Google's standalone headless shell instead. The current Stable
+#    version is resolved at build time and recorded; skip with
+#    TL_NO_BUNDLED_CHROME=1 (PDF then needs report.chromium_path on the
+#    appliance).
+if [ "${TL_NO_BUNDLED_CHROME:-0}" != "1" ]; then
+  CFT_JSON="$(curl -fsSL --max-time 30 \
+    https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json 2>/dev/null || true)"
+  SHELL_URL="$(printf '%s' "$CFT_JSON" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    downloads = data['channels']['Stable']['downloads']['chrome-headless-shell']
+    print(next(d['url'] for d in downloads if d['platform'] == 'linux64'))
+except Exception:
+    pass" 2>/dev/null || true)"
+  SHELL_VER="$(printf '%s' "$CFT_JSON" | python3 -c "
+import json, sys
+try:
+    print(json.load(sys.stdin)['channels']['Stable']['version'])
+except Exception:
+    pass" 2>/dev/null || true)"
+  if [ -n "$SHELL_URL" ] && [ -n "$SHELL_VER" ]; then
+    CACHE_DIR="$REPO_ROOT/packaging/.cache"
+    mkdir -p "$CACHE_DIR"
+    SHELL_ZIP="$CACHE_DIR/chrome-headless-shell-$SHELL_VER-linux64.zip"
+    if [ ! -f "$SHELL_ZIP" ]; then
+      echo "==> Downloading chrome-headless-shell $SHELL_VER"
+      curl -fsSL -o "$SHELL_ZIP.part" "$SHELL_URL" && mv "$SHELL_ZIP.part" "$SHELL_ZIP"
+    fi
+    unzip -q "$SHELL_ZIP" -d "$APP_DIR"
+    mv "$APP_DIR/chrome-headless-shell-linux64" "$APP_DIR/chrome-headless-shell"
+    chmod 755 "$APP_DIR/chrome-headless-shell/chrome-headless-shell"
+    echo "$SHELL_VER" > "$APP_DIR/chrome-headless-shell/VERSION"
+    echo "==> Bundled chrome-headless-shell $SHELL_VER"
+  else
+    echo "!! Could not resolve a chrome-headless-shell download (offline build?)."
+    echo "   PDF generation on the appliance will need report.chromium_path"
+    echo "   pointing at a non-snap Chrome/Chromium."
+  fi
+fi
+
+# 5. Control files.
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $PKG_NAME
 Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: python3 (>= 3.11), python3-venv, chromium-browser | chromium, xserver-xorg-core, x11-xserver-utils, pulseaudio-utils | pipewire-pulse
+Depends: python3 (>= 3.11), python3-venv, chromium-browser | chromium, xserver-xorg-core, x11-xserver-utils, pulseaudio-utils | pipewire-pulse, libnss3, libnspr4, libexpat1, libfontconfig1, libglib2.0-0t64 | libglib2.0-0
 Maintainer: Transition Layer <ops@transitionlayer.invalid>
 Description: Portable AV commissioning test source
  Turns a mini-PC into a guided HDMI test source with a phone control
@@ -177,7 +221,7 @@ exit 0
 EOF
 chmod 755 "$STAGE/DEBIAN/prerm"
 
-# 5. Build.
+# 6. Build.
 mkdir -p "$OUT_DIR"
 DEB="$OUT_DIR/${PKG_NAME}_${VERSION}_${ARCH}.deb"
 dpkg-deb --build --root-owner-group "$STAGE" "$DEB"

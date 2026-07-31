@@ -17,3 +17,4 @@ backend/tl_commissioning_source/static/
 *.db-wal
 *.db-shm
 .venv/
+packaging/.cache/

@@ -28,9 +28,16 @@ from .state import AppState, latest_soak
 
 TEMPLATE_DIR = Path(__file__).parent / "report_templates"
 
+# Bundled by the Debian package (see packaging/build-deb.sh): a standalone
+# chrome-headless-shell. Ubuntu's chromium is a snap, and snap confinement
+# makes it unusable from a system service (no XDG_RUNTIME_DIR, private /tmp,
+# no access to /var/lib) — so snap wrappers are explicitly rejected here.
+BUNDLED_SHELL = Path(
+    "/opt/transition-layer/commissioning-source/chrome-headless-shell/chrome-headless-shell"
+)
 CHROMIUM_CANDIDATES = [
-    "chromium", "chromium-browser", "google-chrome", "chrome",
-    "/usr/bin/chromium", "/usr/bin/chromium-browser", "/snap/bin/chromium",
+    "google-chrome", "chrome", "chromium", "chromium-browser",
+    "/usr/bin/chromium", "/usr/bin/chromium-browser",
 ]
 
 
@@ -38,13 +45,29 @@ class ReportError(Exception):
     pass
 
 
+def _is_snap_wrapper(path: str) -> bool:
+    try:
+        real = Path(path).resolve()
+        if any(part == "snap" for part in real.parts):
+            return True
+        head = real.read_bytes()[:1024]
+        return head.startswith(b"#!") and b"snap" in head
+    except OSError:
+        return True
+
+
 def find_chromium(config: Config) -> str | None:
     configured = config.get("report", "chromium_path") or ""
     if configured:
+        # Explicit configuration always wins, snap or not.
         return configured if Path(configured).exists() else None
+    if BUNDLED_SHELL.exists():
+        return str(BUNDLED_SHELL)
     for candidate in CHROMIUM_CANDIDATES:
-        found = shutil.which(candidate) or (candidate if Path(candidate).exists() else None)
-        if found:
+        found = shutil.which(candidate) or (
+            candidate if Path(candidate).exists() else None
+        )
+        if found and not _is_snap_wrapper(found):
             return found
     return None
 
@@ -258,8 +281,10 @@ def html_to_pdf(html: str, pdf_path: Path, config: Config) -> None:
     chromium = find_chromium(config)
     if chromium is None:
         raise ReportError(
-            "No Chromium/Chrome binary found for PDF generation."
-            " Install chromium or set report.chromium_path in the configuration."
+            "No usable Chromium found for PDF generation. Ubuntu's snap"
+            " chromium cannot be used by the backend service; install the"
+            " package built with the bundled chrome-headless-shell, or set"
+            " report.chromium_path to a non-snap Chrome/Chromium binary."
         )
     with tempfile.TemporaryDirectory(prefix="tl-report-") as tmp:
         html_file = Path(tmp) / "report.html"
