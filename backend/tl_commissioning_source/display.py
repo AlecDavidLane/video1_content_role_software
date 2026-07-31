@@ -58,6 +58,8 @@ QUICK_MODES = [
 
 
 class DisplayBackend:
+    kind = "unknown"
+
     def list_outputs(self) -> list[Output]:  # pragma: no cover - interface
         raise NotImplementedError
 
@@ -90,6 +92,8 @@ def _mode_matches(mode: DisplayMode, key: str) -> bool:
 class XrandrBackend(DisplayBackend):
     """Parses `xrandr --query`. Mode setting uses --mode/--rate only, so the
     selected timing is always one the driver advertised (FR-12)."""
+
+    kind = "xrandr"
 
     _OUTPUT_RE = re.compile(r"^(\S+) (connected|disconnected)")
     _MODE_RE = re.compile(r"^\s+(\d+)x(\d+)i?\s+(.*)$")
@@ -139,6 +143,8 @@ class XrandrBackend(DisplayBackend):
 class MockDisplayBackend(DisplayBackend):
     """Simulates one connected HDMI output with the quick-choice modes."""
 
+    kind = "mock"
+
     def __init__(self) -> None:
         self.active = DisplayMode(1920, 1080, 60.0)
         self.connected = True
@@ -164,16 +170,41 @@ class MockDisplayBackend(DisplayBackend):
         self.active = mode
 
 
+class AutoDisplayBackend(DisplayBackend):
+    """Prefers real xrandr, falling back to mock — re-probing on every call,
+    because the X server usually starts *after* the backend service on an
+    appliance. `kind` always reflects the backend that answered last, so
+    health and status can never present simulated hardware as real."""
+
+    def __init__(self) -> None:
+        self._xrandr = XrandrBackend()
+        self._mock = MockDisplayBackend()
+        self.kind = "mock"
+
+    def _real_available(self) -> bool:
+        return shutil.which("xrandr") is not None
+
+    def list_outputs(self) -> list[Output]:
+        if self._real_available():
+            try:
+                outputs = self._xrandr.list_outputs()
+                self.kind = "xrandr"
+                return outputs
+            except Exception:
+                pass
+        self.kind = "mock"
+        return self._mock.list_outputs()
+
+    def set_mode(self, connector: str, mode: DisplayMode) -> None:
+        if self.kind == "xrandr":
+            self._xrandr.set_mode(connector, mode)
+        else:
+            self._mock.set_mode(connector, mode)
+
+
 def make_display_backend(kind: str = "auto") -> DisplayBackend:
     if kind == "mock":
         return MockDisplayBackend()
     if kind == "xrandr":
         return XrandrBackend()
-    if shutil.which("xrandr"):
-        try:
-            backend = XrandrBackend()
-            backend.list_outputs()
-            return backend
-        except Exception:
-            pass
-    return MockDisplayBackend()
+    return AutoDisplayBackend()

@@ -17,6 +17,9 @@ Type=simple
 # Note: /health reports 503 until this kiosk connects, so only reachability
 # is checked here, not health.
 ExecStartPre=/bin/sh -c 'until curl -s -o /dev/null http://127.0.0.1:8080/health || [ $SECONDS -gt 45 ]; do sleep 1; done; exit 0'
+# Let the backend service (user tl-source) drive xrandr on this session's
+# X server for output-mode control (FR-11..14).
+ExecStartPre=-/usr/bin/xhost +SI:localuser:tl-source
 ExecStart=/usr/bin/chromium-browser \
     --kiosk \
     --noerrdialogs \

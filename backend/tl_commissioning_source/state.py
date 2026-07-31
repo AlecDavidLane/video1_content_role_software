@@ -129,6 +129,7 @@ class AppState:
             "outputs": [o.to_dict() for o in outputs],
             "active": active.to_dict() if active else None,
             "quick_modes": quick,
+            "backend": getattr(self.display, "kind", "unknown"),
         }
 
     async def set_mode(self, connector: str, mode_key: str) -> dict:
@@ -153,7 +154,10 @@ class AppState:
             sinks = self.audio.list_sinks()
         except Exception as exc:  # noqa: BLE001
             return {"error": f"Audio query failed: {exc}", "sinks": []}
-        return {"sinks": [s.to_dict() for s in sinks]}
+        return {
+            "sinks": [s.to_dict() for s in sinks],
+            "backend": getattr(self.audio, "kind", "unknown"),
+        }
 
     async def set_audio_sink(self, name: str) -> dict:
         known = {s.name for s in self.audio.list_sinks()}
@@ -182,10 +186,17 @@ class AppState:
             },
             "display": {
                 "ok": active is not None,
+                # A mock answer must never read as real hardware (simulated
+                # data is fine for bench work, poison in a commissioning log).
                 "detail": (
                     f"{active['connector']} {active['active_mode']['key']}"
                     if active and active.get("active_mode")
                     else "HDMI output disconnected"
+                )
+                + (
+                    " (SIMULATED - no real display control)"
+                    if output.get("backend") == "mock"
+                    else ""
                 ),
             },
             "audio": self._audio_health(),
@@ -211,7 +222,12 @@ class AppState:
         default = next((s for s in state["sinks"] if s["is_default"]), None)
         return {
             "ok": default is not None,
-            "detail": default["name"] if default else "No default audio sink",
+            "detail": (default["name"] if default else "No default audio sink")
+            + (
+                " (SIMULATED - no real audio control)"
+                if state.get("backend") == "mock"
+                else ""
+            ),
         }
 
     def _disk_health(self) -> dict:
@@ -288,6 +304,7 @@ class AppState:
             "app_version": __version__,
             "connector": active.get("connector"),
             "mode": mode.get("key"),
+            "display_backend": output.get("backend"),
             "pattern": self.active_pattern,
             "captured_at": utcnow(),
         }

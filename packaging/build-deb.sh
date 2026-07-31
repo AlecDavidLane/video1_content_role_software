@@ -125,12 +125,15 @@ if [ ! -x "$APP/venv/bin/pip" ]; then
 fi
 "$APP/venv/bin/pip" install --quiet --upgrade pip
 PIPFLAGS="--only-binary=:all:"
-if ls "$APP"/wheels/*.whl >/dev/null 2>&1; then
+# Install the app wheel by explicit path: naming the bare package would let
+# pip treat an older installed version as "satisfied" and skip the upgrade.
+APP_WHEEL="$(ls "$APP"/wheels/tl_commissioning_source-*.whl 2>/dev/null | head -1)"
+if [ -n "$APP_WHEEL" ]; then
     if ! "$APP/venv/bin/pip" install --quiet $PIPFLAGS --no-index --find-links "$APP/wheels" \
-            -r "$APP/requirements.lock" tl-commissioning-source >/dev/null 2>&1; then
+            -r "$APP/requirements.lock" "$APP_WHEEL" >/dev/null 2>&1; then
         echo "Offline wheel bundle incomplete; retrying with PyPI..."
         "$APP/venv/bin/pip" install --quiet $PIPFLAGS --find-links "$APP/wheels" \
-            -r "$APP/requirements.lock" tl-commissioning-source || {
+            -r "$APP/requirements.lock" "$APP_WHEEL" || {
             echo "ERROR: no binary wheels available for python3 ($(python3 --version))." >&2
             echo "Supported reference OS is Ubuntu 24.04 LTS (Python 3.12); newer" >&2
             echo "releases work when packaging/requirements.lock pins versions that" >&2
@@ -139,7 +142,8 @@ if ls "$APP"/wheels/*.whl >/dev/null 2>&1; then
         }
     fi
 else
-    "$APP/venv/bin/pip" install --quiet $PIPFLAGS -r "$APP/requirements.lock" tl-commissioning-source
+    echo "ERROR: application wheel missing from $APP/wheels" >&2
+    exit 1
 fi
 
 # Config: install sample on first install only; never overwrite (idempotent).

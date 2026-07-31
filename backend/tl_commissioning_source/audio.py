@@ -24,6 +24,8 @@ class AudioSink:
 
 
 class AudioBackend:
+    kind = "unknown"
+
     def list_sinks(self) -> list[AudioSink]:  # pragma: no cover - interface
         raise NotImplementedError
 
@@ -32,6 +34,8 @@ class AudioBackend:
 
 
 class PactlBackend(AudioBackend):
+    kind = "pactl"
+
     def list_sinks(self) -> list[AudioSink]:
         default = subprocess.run(
             ["pactl", "get-default-sink"], capture_output=True, text=True, timeout=10
@@ -56,6 +60,8 @@ class PactlBackend(AudioBackend):
 
 
 class MockAudioBackend(AudioBackend):
+    kind = "mock"
+
     def __init__(self) -> None:
         self.sinks = [
             AudioSink("alsa_output.pci-0000_00_1f.3.hdmi-stereo", "HDMI / DisplayPort", True),
@@ -72,16 +78,38 @@ class MockAudioBackend(AudioBackend):
             sink.is_default = sink.name == name
 
 
+class AutoAudioBackend(AudioBackend):
+    """Prefers real pactl, falling back to mock — re-probing on every call
+    so a session audio server that starts later is picked up, and `kind`
+    always reflects the backend that answered last."""
+
+    def __init__(self) -> None:
+        self._pactl = PactlBackend()
+        self._mock = MockAudioBackend()
+        self.kind = "mock"
+
+    def list_sinks(self) -> list[AudioSink]:
+        if shutil.which("pactl"):
+            try:
+                sinks = self._pactl.list_sinks()
+                if sinks:
+                    self.kind = "pactl"
+                    return sinks
+            except Exception:
+                pass
+        self.kind = "mock"
+        return self._mock.list_sinks()
+
+    def set_default_sink(self, name: str) -> None:
+        if self.kind == "pactl":
+            self._pactl.set_default_sink(name)
+        else:
+            self._mock.set_default_sink(name)
+
+
 def make_audio_backend(kind: str = "auto") -> AudioBackend:
     if kind == "mock":
         return MockAudioBackend()
     if kind == "pactl":
         return PactlBackend()
-    if shutil.which("pactl"):
-        try:
-            backend = PactlBackend()
-            backend.list_sinks()
-            return backend
-        except Exception:
-            pass
-    return MockAudioBackend()
+    return AutoAudioBackend()

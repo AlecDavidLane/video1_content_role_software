@@ -11,6 +11,10 @@ User=tl-source
 Group=tl-source
 SupplementaryGroups=video audio
 Environment=TL_SOURCE_CONFIG=/etc/tl-commissioning-source/config.yaml
+# Reach the kiosk session's X server for xrandr output control. The kiosk
+# unit grants access with xhost +SI:localuser:tl-source; until it does (or
+# when no X is running) the app falls back to a clearly-labelled mock.
+Environment=DISPLAY=:0
 ExecStart=/opt/transition-layer/commissioning-source/venv/bin/tl-source serve
 Restart=always
 RestartSec=2
