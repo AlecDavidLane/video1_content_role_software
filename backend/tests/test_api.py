@@ -184,3 +184,43 @@ def test_health_endpoint_shape(client):
     assert set(payload["checks"]) >= {
         "backend", "database", "output_browser", "display", "audio", "disk",
     }
+
+
+def test_static_api_token_for_integrations(client, workdir):
+    """OpenAVC-style integrations authenticate with a provisioned static
+    bearer token instead of the PIN flow."""
+    _setup_appliance(client)
+    # Provision the token the way the CLI does.
+    from tl_commissioning_source.config import load_config
+
+    config = load_config()
+    config.set(("security", "api_token"), "openavc-static-token")
+    config.save()
+    client.app.state.appstate.config = load_config()
+
+    headers = {"Authorization": "Bearer openavc-static-token"}
+    assert client.post(
+        "/api/v1/patterns/identify/activate", json={}, headers=headers
+    ).status_code == 200
+    assert client.post(
+        "/api/v1/patterns/identify/activate", json={},
+        headers={"Authorization": "Bearer wrong-token"},
+    ).status_code == 401
+    # The static token is a secret: never exported.
+    exported = client.get("/api/v1/config/export").json()
+    assert "api_token" not in exported.get("security", {})
+
+
+def test_status_works_while_soak_running(client):
+    """Regression: /status is a sync endpoint served from a worker thread;
+    the soak timer must not depend on the event-loop clock."""
+    response = client.post(
+        "/api/v1/patterns/soak/activate", json={"params": {"minutes": 1}}
+    )
+    assert response.status_code == 200
+    status = client.get("/api/v1/status")
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload["soak"]["running"] is True
+    assert payload["soak"]["remaining_seconds"] <= 60
+    client.post("/api/v1/soak/stop")

@@ -100,6 +100,14 @@ def cmd_init(args: argparse.Namespace) -> int:
     if args.pin:
         config.set_pin(args.pin)
         config.set(("security", "setup_complete"), True)
+    if args.api_token:
+        config.set(("security", "api_token"), args.api_token)
+    elif args.generate_api_token:
+        import secrets as _secrets
+
+        token = _secrets.token_urlsafe(32)
+        config.set(("security", "api_token"), token)
+        print(f"API token (store it now; it is not shown again): {token}")
     config.save()
 
     state = _mk_state()
@@ -237,6 +245,9 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--report-footer")
     init.add_argument("--engineer")
     init.add_argument("--pin", help="set control PIN and mark setup complete")
+    init.add_argument("--api-token", help="set a static API token for integrations (OpenAVC, Ansible)")
+    init.add_argument("--generate-api-token", action="store_true",
+                      help="generate and print a static API token for integrations")
     init.add_argument("--role-version", help="record the deploying role version")
     init.set_defaults(func=cmd_init)
 

@@ -47,6 +47,10 @@ DEFAULTS: dict[str, Any] = {
         "pin_salt": "",
         "token_ttl_seconds": 43200,
         "setup_complete": False,
+        # Optional static bearer token for integrations (OpenAVC, Ansible
+        # validation). Empty = disabled. Set via `tl-source init --api-token`
+        # or --generate-api-token; never exported (FR-05).
+        "api_token": "",
     },
     "output": {
         "preferred_connector": "",  # empty -> first connected output
@@ -76,7 +80,11 @@ DEFAULTS: dict[str, Any] = {
     },
 }
 
-_SECRET_KEYS = {("security", "pin_hash"), ("security", "pin_salt")}
+_SECRET_KEYS = {
+    ("security", "pin_hash"),
+    ("security", "pin_salt"),
+    ("security", "api_token"),
+}
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

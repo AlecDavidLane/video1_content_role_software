@@ -5,6 +5,26 @@ any orchestrator) integrates as an **adapter over this API** — nothing is
 embedded in the application core, and the appliance is fully functional
 without OpenAVC.
 
+> **Ready-made OpenAVC driver:** `integrations/openavc/` contains a
+> validated `.avcdriver` file for the OpenAVC platform plus a README
+> covering installation, the static API token, and how to lay out a
+> commissioning touch panel. The notes below describe the raw API that
+> driver (and any other integration) sits on.
+
+## Static API token for integrations
+
+Panel platforms authenticate with a provisioned bearer token instead of
+the phone UI's PIN exchange:
+
+```bash
+sudo -u tl-source /opt/transition-layer/commissioning-source/venv/bin/tl-source \
+  init --generate-api-token     # prints the token once
+```
+
+The token is accepted by all state-changing endpoints, stored as a
+secret, and excluded from config exports and diagnostic bundles. Rotate
+by re-running the command.
+
 - Base URL: `http://<appliance>:8080`
 - OpenAPI: `GET /api/openapi.json`, interactive docs at `/api/docs`
 - Live events: `WS /api/v1/events` (JSON frames `{type, at, payload}`)

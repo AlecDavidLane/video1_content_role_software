@@ -53,7 +53,17 @@ def require_control(request: Request) -> None:
     token = header.removeprefix("Bearer ").strip()
     if not token:
         token = request.query_params.get("token", "")
-    if not token or not token_valid(state.db, token):
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Control token required. Obtain one with the control PIN at /api/v1/auth/token.",
+        )
+    # A provisioned static API token (integrations: OpenAVC, Ansible) is
+    # accepted alongside PIN-issued short-lived tokens.
+    api_token = state.config.get("security", "api_token") or ""
+    if api_token and secrets.compare_digest(token, api_token):
+        return
+    if not token_valid(state.db, token):
         raise HTTPException(
             status_code=401,
             detail="Control token required. Obtain one with the control PIN at /api/v1/auth/token.",

@@ -1,0 +1,203 @@
+# OpenAVC driver for the Transition Layer Commissioning Test Source.
+#
+# Pure adapter over the appliance's public REST API (/api/v1) — no logic
+# lives here that isn't in the API. Import via Programmer IDE → Devices →
+# Drivers → Import, or drop into the OpenAVC user drivers directory.
+
+id: tl_commissioning_source
+name: TL Commissioning Test Source
+manufacturer: Transition Layer
+category: video
+version: 1.0.0
+author: Transition Layer
+description: Controls the Transition Layer portable AV commissioning test source (test patterns, output mode, audio sink, soak) via its local REST API.
+source_url: https://github.com/AlecDavidLane/video1_content_role_software
+
+transport: http
+
+help:
+  overview: |
+    The Transition Layer test source turns a mini-PC into a guided HDMI
+    test generator with seven patterns (Identify, Alignment, Colour,
+    Motion, Audio, Mode, Soak), a phone control UI and PDF commissioning
+    reports. This driver exposes pattern selection, output mode, audio
+    sink and soak control so an OpenAVC panel can drive it as a source
+    device during commissioning.
+  setup: |
+    1. On the appliance, generate a static API token:
+       `sudo -u tl-source /opt/transition-layer/commissioning-source/venv/bin/tl-source init --generate-api-token`
+       (prints the token once; then `sudo systemctl restart tl-commissioning-backend`).
+    2. Add this device in OpenAVC with the appliance's IP address,
+       port 8080, authentication "bearer" and that token.
+    3. The appliance's own guided-test workflow (sessions, evidence,
+       reports) stays on its phone UI; this driver covers live source
+       control. The full API is documented at http://<appliance>:8080/api/docs.
+  connection: State-changing calls need the API token — generate one with `tl-source init --generate-api-token` on the appliance and enter it in this device's settings.
+
+default_config:
+  host: ""
+  port: 8080
+  poll_interval: 3
+
+config_schema:
+  host:
+    type: string
+    required: true
+    label: IP Address / Hostname
+  port:
+    type: integer
+    default: 8080
+    label: Port
+  auth_type:
+    type: enum
+    values: ["bearer"]
+    default: "bearer"
+    label: Authentication
+  token:
+    type: string
+    default: ""
+    label: API Token
+    secret: true
+
+state_variables:
+  active_pattern:
+    type: enum
+    values: ["holding", "identify", "alignment", "colour", "motion", "audio", "mode", "soak"]
+    label: Active Pattern
+  output_connector:
+    type: string
+    label: Output Connector
+  output_mode:
+    type: string
+    label: Output Mode
+  soak_running:
+    type: boolean
+    label: Soak Running
+  soak_remaining:
+    type: integer
+    label: Soak Remaining (s)
+  health_ok:
+    type: boolean
+    label: Healthy
+  session_id:
+    type: string
+    label: Current Session
+  app_version:
+    type: string
+    label: App Version
+
+commands:
+  show_identify:
+    label: "Pattern: Identify"
+    method: POST
+    path: "/api/v1/patterns/identify/activate"
+    body: "{}"
+  show_alignment:
+    label: "Pattern: Alignment"
+    method: POST
+    path: "/api/v1/patterns/alignment/activate"
+    body: "{}"
+  show_colour:
+    label: "Pattern: Colour"
+    method: POST
+    path: "/api/v1/patterns/colour/activate"
+    body: "{}"
+  show_motion:
+    label: "Pattern: Motion"
+    method: POST
+    path: "/api/v1/patterns/motion/activate"
+    body: "{}"
+  show_audio:
+    label: "Pattern: Audio"
+    method: POST
+    path: "/api/v1/patterns/audio/activate"
+    body: "{}"
+  show_mode:
+    label: "Pattern: Mode"
+    method: POST
+    path: "/api/v1/patterns/mode/activate"
+    body: "{}"
+  show_holding:
+    label: "Pattern: Holding (black)"
+    method: POST
+    path: "/api/v1/patterns/holding"
+    body: "{}"
+
+  start_soak:
+    label: Start Soak
+    method: POST
+    path: "/api/v1/patterns/soak/activate"
+    body: '{"params": {"minutes": {minutes}}}'
+    params:
+      minutes:
+        type: integer
+        required: true
+        default: 30
+        min: 1
+        max: 1440
+        label: Duration (minutes)
+  stop_soak:
+    label: Stop Soak
+    method: POST
+    path: "/api/v1/soak/stop"
+    body: "{}"
+
+  set_output_mode:
+    label: Set Output Mode
+    method: POST
+    path: "/api/v1/output/mode"
+    body: '{"connector": "{connector}", "mode": "{mode}"}'
+    params:
+      connector:
+        type: string
+        required: true
+        default: "HDMI-1"
+        label: Connector
+      mode:
+        type: string
+        required: true
+        default: "1920x1080@60"
+        label: Mode (WxH@Hz)
+
+  set_audio_sink:
+    label: Set Audio Sink
+    method: POST
+    path: "/api/v1/audio/sink"
+    body: '{"sink": "{sink}"}'
+    params:
+      sink:
+        type: string
+        required: true
+        label: Sink Name (pactl)
+
+  refresh_status:
+    label: Refresh Status
+    method: GET
+    path: "/api/v1/status"
+
+responses:
+  # Full status payload (GET /api/v1/status and polling).
+  - json: true
+    require: pattern
+    set:
+      active_pattern: { key: pattern.active_pattern }
+      output_connector: { key: output.active.connector }
+      output_mode: { key: output.active.active_mode.key }
+      soak_running: { key: soak.running, type: boolean }
+      soak_remaining: { key: soak.remaining_seconds, type: integer }
+      health_ok: { key: health_ok, type: boolean }
+      session_id: { key: current_session_id }
+      app_version: { key: app_version }
+  # Pattern-activation replies carry the new state directly.
+  - json: true
+    require: active_pattern
+    set:
+      active_pattern: { key: active_pattern }
+      output_connector: { key: output.active.connector }
+      output_mode: { key: output.active.active_mode.key }
+      soak_running: { key: soak.running, type: boolean }
+      soak_remaining: { key: soak.remaining_seconds, type: integer }
+
+polling:
+  queries:
+    - "/api/v1/status"

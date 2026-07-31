@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import shutil
 import socket
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -329,8 +330,9 @@ class SoakRunner:
     def state(self) -> dict:
         if not self.running:
             return {"running": False}
-        loop = asyncio.get_event_loop()
-        elapsed = loop.time() - self.started_monotonic
+        # time.monotonic, not the event loop clock: state() is also called
+        # from sync endpoints running in worker threads with no loop.
+        elapsed = time.monotonic() - self.started_monotonic
         total = self.requested_minutes * 60
         return {
             "running": True,
@@ -354,7 +356,7 @@ class SoakRunner:
         await self.stop(interrupted=True)
         self.requested_minutes = minutes
         self.faults = 0
-        self.started_monotonic = asyncio.get_event_loop().time()
+        self.started_monotonic = time.monotonic()
         cursor = self.state_ref.db.execute(
             "INSERT INTO soak_run (session_id, requested_minutes) VALUES (?, ?)",
             (self.state_ref.current_session_id(), minutes),
@@ -382,17 +384,17 @@ class SoakRunner:
             self.run_id = None
 
     async def _run(self, minutes: int) -> None:
-        deadline = asyncio.get_event_loop().time() + minutes * 60
+        deadline = time.monotonic() + minutes * 60
         index = 0
         try:
-            while asyncio.get_event_loop().time() < deadline:
+            while time.monotonic() < deadline:
                 self.current_step = SOAK_CYCLE[index % len(SOAK_CYCLE)]
                 index += 1
                 await self.state_ref.hub.publish(
                     "soak_step",
                     {"step": self.current_step, **self.state()},
                 )
-                remaining = deadline - asyncio.get_event_loop().time()
+                remaining = deadline - time.monotonic()
                 await asyncio.sleep(min(SOAK_STEP_SECONDS, max(0, remaining)))
             self._finish("completed")
             self.state_ref.store.record_event(
