@@ -66,10 +66,12 @@ sudo -u tl-source /opt/transition-layer/commissioning-source/venv/bin/tl-source 
 tl-source healthcheck               # 0 = healthy
 ```
 
-The kiosk user unit is enabled for the auto-logged-in kiosk session:
-`systemctl --user enable --now tl-commissioning-kiosk`. See
-`docs/runbook.md` for the full appliance build, update, rollback, backup
-and restore procedures, and `docs/operator-guide.md` for on-site use.
+**Fresh machine?** Follow the step-by-step walkthrough in
+[docs/install-and-test.md](docs/install-and-test.md) — it covers
+prerequisites, the quick functional test, the full kiosk setup and the
+on-hardware acceptance checks. See `docs/runbook.md` for update,
+rollback, backup and restore procedures, and `docs/operator-guide.md`
+for on-site use.
 
 ## Non-interactive configuration (Ansible interface)
 
