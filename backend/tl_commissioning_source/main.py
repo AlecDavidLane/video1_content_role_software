@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
@@ -59,6 +59,10 @@ def create_app() -> FastAPI:
         def spa(path: str):
             """SPA history fallback: real files are served, unknown paths get
             index.html so phone deep links (/patterns, /session/…) work."""
+            if path == "kiosk":
+                # The kiosk mount only matches /kiosk/ — send the slashless
+                # form there instead of an empty control-UI shell.
+                return RedirectResponse("/kiosk/")
             candidate = (STATIC_DIR / path).resolve()
             if (
                 path

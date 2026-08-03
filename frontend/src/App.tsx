@@ -1,4 +1,4 @@
-import { BrowserRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AppProvider, useApp } from "./state";
 import PinDialog from "./components/PinDialog";
 import Home from "./pages/Home";
@@ -54,6 +54,8 @@ function Chrome() {
         <Route path="/patterns" element={<ManualPatterns />} />
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/setup" element={<Setup />} />
+        {/* Unknown paths land on Home rather than an empty shell. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       {needsPin && <PinDialog />}
