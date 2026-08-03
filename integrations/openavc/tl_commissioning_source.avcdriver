@@ -8,7 +8,7 @@ id: tl_commissioning_source
 name: TL Commissioning Test Source
 manufacturer: Transition Layer
 category: video
-version: 1.1.1
+version: 1.1.2
 author: Transition Layer
 description: Controls the Transition Layer portable AV commissioning test source (test patterns, output mode, audio sink, soak) via its local REST API.
 source_url: https://github.com/AlecDavidLane/video1_content_role_software
@@ -85,6 +85,12 @@ state_variables:
   session_status:
     type: string
     label: Session Status
+  next_test:
+    type: string
+    label: Next Unanswered Test
+  unanswered_count:
+    type: integer
+    label: Unanswered Tests
   app_version:
     type: string
     label: App Version
@@ -265,6 +271,9 @@ responses:
       soak_remaining: { key: soak.remaining_seconds, type: integer }
       health_ok: { key: health_ok, type: boolean }
       session_id: { key: current_session_id }
+      session_status: { key: current_session_status }
+      next_test: { key: next_test }
+      unanswered_count: { key: unanswered_count, type: integer }
       app_version: { key: app_version }
   # Pattern-activation replies carry the new state directly.
   - json: true

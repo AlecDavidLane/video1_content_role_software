@@ -1,25 +1,30 @@
 """OpenAVC script: guided commissioning of a 3-display meeting room.
 
-Drives the Transition Layer test source (device id: tl_source) through one
-test session per signal path — left monitor, right monitor, projector —
-with room prep (display power + switcher routing) folded into each path.
+Drives the Transition Layer test source through one test session per
+signal path — left monitor, right monitor, projector — with room prep
+(display power + switcher routing) folded into each path.
+
+The current step is ALWAYS read from the appliance (`next_test` in the
+driver's polled state), never counted locally: a dropped or double-fired
+button press can therefore never drift the panel out of sync with the
+session. Requires appliance >= 0.1.10 and driver >= 1.1.2.
 
 Panel elements this script expects (create them in the UI Builder with
 these element IDs):
 
     btn_test_left / btn_test_right / btn_test_proj   start a path's session
     btn_pass                                         pass current step
-    btn_fail                                         fail current step (uses note below)
+    btn_fail                                         fail current step (note below)
     input_fail_note                                  text input for the failure note
     btn_complete                                     complete session + generate report
-    lbl_step  / lbl_session / lbl_result             labels; bind each one's
+    lbl_step / lbl_session / lbl_result              labels; bind each one's
                                                      Shows->Text to var.tl_step_text /
                                                      var.tl_session_text / var.tl_result_text
 
 Adjust DEVICE IDS, switcher command names and I/O numbers to your rig —
 they're all in the ROOM table below. TEST_SEQUENCE is passed to
-begin_session so the session's required tests always match the steps the
-panel walks (keys: identify, alignment, colour, motion, audio, mode, soak).
+begin_session so the session's required tests always match the panel's
+plan (keys: identify, alignment, colour, motion, audio, mode, soak).
 
 The appliance enforces the rules regardless of what this script does: a
 FAIL without a note is rejected, and a session can only complete as
@@ -28,7 +33,7 @@ Passed when every test's latest attempt passed.
 
 import json
 
-from openavc import on_event, devices, state, log
+from openavc import on_event, devices, state, log, delay
 
 TL = "tl_source"          # device id of the TL test source in this project
 SWITCHER = "switcher"     # device id of your video switcher
@@ -44,41 +49,45 @@ ROOM_PATHS = {
     "proj":  ("projector",     1, "Switcher in 1 -> out 1 -> Projector"),
 }
 
-# Must match what begin_session selects, or completion is (rightly)
-# blocked for the unanswered tests.
 TEST_SEQUENCE = ["identify", "alignment", "colour", "motion", "audio", "mode"]
 
+TOTAL = len(TEST_SEQUENCE)
 
-def _show(step_text: str = "", session_text: str = "", result_text: str = ""):
-    # Written as project variables; bind each label's Shows->Text to the
-    # matching var.* key in the UI Builder (ui.* label overrides proved
-    # unreliable on some platform versions).
+
+def _show(step_text="", session_text="", result_text=""):
     state.set("var.tl_step_text", step_text)
     state.set("var.tl_session_text", session_text)
     state.set("var.tl_result_text", result_text)
 
 
-def _current_test() -> str | None:
-    index = state.get("var.tl_step_index")
-    if index is None or index >= len(TEST_SEQUENCE):
-        return None
-    return TEST_SEQUENCE[index]
+def _next_test():
+    """Server truth: the appliance's first unanswered test, '' when done."""
+    return state.get(f"device.{TL}.next_test") or ""
+
+
+def _remaining():
+    return state.get(f"device.{TL}.unanswered_count") or 0
+
+
+async def _sync(settle=1.5):
+    """Ask the appliance for fresh status and give the reply time to land."""
+    await devices.send(TL, "refresh_status")
+    await delay(settle)
 
 
 async def _open_step():
-    """Show the pattern for the current step and update the panel."""
-    test = _current_test()
-    if test is None:
-        _show("All steps answered — press Complete",
+    test = _next_test()
+    if not test:
+        _show("All steps answered — press COMPLETE",
               state.get("var.tl_path_label", ""))
         return
     await devices.send(TL, f"show_{test}")
-    index = state.get("var.tl_step_index")
-    _show(f"Step {index + 1}/{len(TEST_SEQUENCE)}: {test.upper()}",
+    done = TOTAL - _remaining()
+    _show(f"Step {done + 1}/{TOTAL}: {test.upper()}",
           state.get("var.tl_path_label", ""))
 
 
-async def _start_path(path_key: str):
+async def _start_path(path_key):
     display_id, output, path_text = ROOM_PATHS[path_key]
 
     # Room prep: display on, route the test source to this path.
@@ -92,9 +101,9 @@ async def _start_path(path_key: str):
         "path": path_text,
         "tests": json.dumps(TEST_SEQUENCE),
     })
-    state.set("var.tl_step_index", 0)
     state.set("var.tl_path_label", path_text)
     log.info(f"TL commissioning: started path '{path_key}' ({path_text})")
+    await _sync()
     await _open_step()
 
 
@@ -115,40 +124,47 @@ async def test_proj(event):
 
 @on_event("ui.press.btn_pass")
 async def record_pass(event):
-    test = _current_test()
-    if test is None:
+    test = _next_test()
+    if not test:
         return
     await devices.send(TL, "record_pass", {"test": test})
-    state.set("var.tl_step_index", state.get("var.tl_step_index", 0) + 1)
+    await _sync()
     await _open_step()
 
 
 @on_event("ui.press.btn_fail")
 async def record_fail(event):
-    test = _current_test()
-    if test is None:
+    test = _next_test()
+    if not test:
         return
     note = (state.get("ui.input_fail_note.value")
             or state.get("var.input_fail_note") or "").strip()
     if not note:
-        _show(f"FAIL needs a note — type one first ({test.upper()})",
+        _show(f"FAIL needs a note — type it and press Enter first ({test.upper()})",
               state.get("var.tl_path_label", ""))
         return  # the appliance would reject it anyway (409)
     await devices.send(TL, "record_fail", {"test": test, "note": note})
-    state.set("var.tl_step_index", state.get("var.tl_step_index", 0) + 1)
+    await _sync()
     await _open_step()
 
 
 @on_event("ui.press.btn_complete")
 async def complete_and_report(event):
     await devices.send(TL, "complete_session")
-    await devices.send(TL, "generate_report")
-    # Driver polling refreshes session_status a moment later; reflect it.
-    result = state.get(f"device.{TL}.session_status", "completed")
-    _show("", state.get("var.tl_path_label", ""),
-          f"Session {result} — report saved on the appliance")
-    state.set("var.tl_step_index", None)
-    log.info("TL commissioning: session completed and report generated")
+    await _sync(settle=2.5)
+    result = state.get(f"device.{TL}.session_status", "unknown")
+    if result in ("completed_passed", "completed_failed"):
+        await devices.send(TL, "generate_report")
+        _show("", state.get("var.tl_path_label", ""),
+              f"Session {result} — report saved on the appliance")
+        log.info(f"TL commissioning: {result}, report generated")
+    else:
+        remaining = _remaining()
+        _show(f"Completion BLOCKED — {remaining} step(s) unanswered"
+              f" (next: {_next_test().upper() or '?'})",
+              state.get("var.tl_path_label", ""),
+              "Not completed — answer the remaining steps (panel or phone Review)")
+        log.info("TL commissioning: completion blocked")
 
 
 # Capture the fail-note text input when submitted from the panel keyboard.

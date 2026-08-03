@@ -61,6 +61,18 @@ def create_token(body: schemas.TokenRequest, request: Request):
 def status(request: Request):
     state = _state(request)
     current = state.current_session_id()
+    # Server-truth guided progress, so panel integrations can follow the
+    # appliance instead of counting steps client-side (which drifts the
+    # moment a press double-fires or a call is dropped).
+    session_status = ""
+    next_test = ""
+    unanswered_count = 0
+    if current:
+        session = state.store.get_session(current)
+        progress = session["progress"]
+        session_status = session["status"]
+        unanswered_count = len(progress["unanswered"])
+        next_test = progress["unanswered"][0] if progress["unanswered"] else ""
     return {
         "identity": state.identity(),
         "pattern": {"active_pattern": state.active_pattern, "params": state.active_params},
@@ -69,6 +81,9 @@ def status(request: Request):
         "soak": state.soak.state(),
         "health_ok": state.health()["ok"],
         "current_session_id": current,
+        "current_session_status": session_status,
+        "next_test": next_test,
+        "unanswered_count": unanswered_count,
         "setup_complete": state.config.setup_complete,
         "app_version": __version__,
     }

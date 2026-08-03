@@ -285,3 +285,41 @@ def test_current_session_panel_workflow(client, monkeypatch):
         "/api/v1/current-session/tests/identify/attempts",
         json={"result": "pass"}, headers=auth,
     ).status_code == 404
+
+
+def test_status_reports_next_unanswered_test(client):
+    """Panel integrations follow the appliance's next_test instead of
+    counting steps client-side."""
+    auth = _setup_appliance(client)
+    empty = client.get("/api/v1/status").json()
+    assert empty["next_test"] == "" and empty["unanswered_count"] == 0
+
+    client.post(
+        "/api/v1/sessions",
+        json={"project_name": "P", "selected_tests": ["identify", "colour", "mode"],
+              "autostart": True},
+        headers=auth,
+    )
+    s = client.get("/api/v1/status").json()
+    assert s["next_test"] == "identify"
+    assert s["unanswered_count"] == 3
+    assert s["current_session_status"] == "in_progress"
+
+    client.post("/api/v1/current-session/tests/identify/attempts",
+                json={"result": "pass"}, headers=auth)
+    s = client.get("/api/v1/status").json()
+    assert s["next_test"] == "colour"
+    assert s["unanswered_count"] == 2
+
+    # Answering out of order still yields the first unanswered in sequence
+    client.post("/api/v1/current-session/tests/mode/attempts",
+                json={"result": "pass"}, headers=auth)
+    s = client.get("/api/v1/status").json()
+    assert s["next_test"] == "colour"
+    assert s["unanswered_count"] == 1
+
+    client.post("/api/v1/current-session/tests/colour/attempts",
+                json={"result": "pass"}, headers=auth)
+    s = client.get("/api/v1/status").json()
+    assert s["next_test"] == "" and s["unanswered_count"] == 0
+    client.post("/api/v1/current-session/complete", headers=auth)
