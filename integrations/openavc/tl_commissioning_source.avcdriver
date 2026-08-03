@@ -8,7 +8,7 @@ id: tl_commissioning_source
 name: TL Commissioning Test Source
 manufacturer: Transition Layer
 category: video
-version: 1.0.0
+version: 1.1.0
 author: Transition Layer
 description: Controls the Transition Layer portable AV commissioning test source (test patterns, output mode, audio sink, soak) via its local REST API.
 source_url: https://github.com/AlecDavidLane/video1_content_role_software
@@ -82,6 +82,9 @@ state_variables:
   session_id:
     type: string
     label: Current Session
+  session_status:
+    type: string
+    label: Session Status
   app_version:
     type: string
     label: App Version
@@ -175,6 +178,74 @@ commands:
     method: GET
     path: "/api/v1/status"
 
+  # ---- Guided-session workflow (current-session aliases; §panel flows) ----
+  # The appliance remains the system of record: a fail without a note is
+  # rejected, and completion outcome is derived server-side.
+  begin_session:
+    label: Begin Test Session
+    method: POST
+    path: "/api/v1/sessions"
+    body: '{"project_name": "{project}", "room": "{room}", "signal_path_text": "{path}", "engineer": "{engineer}", "autostart": true}'
+    params:
+      project:
+        type: string
+        required: true
+        label: Project
+      room:
+        type: string
+        required: true
+        label: Room
+      path:
+        type: string
+        required: true
+        label: Signal Path Description
+      engineer:
+        type: string
+        default: ""
+        label: Engineer
+
+  record_pass:
+    label: Record PASS
+    method: POST
+    path: "/api/v1/current-session/tests/{test}/attempts"
+    body: '{"result": "pass"}'
+    params:
+      test:
+        type: string
+        required: true
+        label: Test Key (identify/alignment/colour/motion/audio/mode/soak)
+
+  record_fail:
+    label: Record FAIL
+    method: POST
+    path: "/api/v1/current-session/tests/{test}/attempts"
+    body: '{"result": "fail", "note": "{note}", "fault_category": "{category}"}'
+    params:
+      test:
+        type: string
+        required: true
+        label: Test Key
+      note:
+        type: string
+        required: true
+        label: Failure Note (mandatory)
+      category:
+        type: string
+        default: ""
+        label: Fault Category
+
+  complete_session:
+    label: Complete Session
+    method: POST
+    path: "/api/v1/current-session/complete"
+    body: "{}"
+
+  generate_report:
+    label: Generate Report
+    method: POST
+    path: "/api/v1/current-session/report"
+    body: "{}"
+
 responses:
   # Full status payload (GET /api/v1/status and polling).
   - json: true
@@ -197,6 +268,12 @@ responses:
       output_mode: { key: output.active.active_mode.key }
       soak_running: { key: soak.running, type: boolean }
       soak_remaining: { key: soak.remaining_seconds, type: integer }
+  # Session replies (begin/complete/current-session reads).
+  - json: true
+    require: selected_tests
+    set:
+      session_id: { key: id }
+      session_status: { key: status }
 
 polling:
   queries:

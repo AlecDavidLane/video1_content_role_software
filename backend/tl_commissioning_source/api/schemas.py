@@ -42,6 +42,9 @@ class SessionCreate(BaseModel):
     endpoints: Endpoints = Field(default_factory=Endpoints)
     selected_tests: list[str] | None = None
     soak_minutes: int = Field(default=0, ge=0, le=1440)
+    # Create and start in one call — for panel/automation clients that
+    # can't hold a draft open (OpenAVC macros, scripted flows).
+    autostart: bool = False
 
 
 class SessionUpdate(BaseModel):

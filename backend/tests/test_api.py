@@ -224,3 +224,64 @@ def test_status_works_while_soak_running(client):
     assert payload["soak"]["running"] is True
     assert payload["soak"]["remaining_seconds"] <= 60
     client.post("/api/v1/soak/stop")
+
+
+def test_current_session_panel_workflow(client, monkeypatch):
+    """OpenAVC-style flow: autostart session -> pass/fail via current-session
+    aliases -> complete -> report, with no session-ID plumbing."""
+    auth = _setup_appliance(client)
+
+    # No active session yet -> 404 with guidance
+    response = client.post(
+        "/api/v1/current-session/tests/identify/attempts",
+        json={"result": "pass"}, headers=auth,
+    )
+    assert response.status_code == 404
+
+    # Create + start in one call
+    session = client.post(
+        "/api/v1/sessions",
+        json={
+            "project_name": "Room 12", "room": "Meeting Room",
+            "signal_path_text": "Switcher out 1 -> Left monitor",
+            "selected_tests": ["identify", "colour"],
+            "autostart": True,
+        },
+        headers=auth,
+    ).json()
+    assert session["status"] == "in_progress"
+
+    assert client.get("/api/v1/current-session").json()["id"] == session["id"]
+
+    # Fail without note still blocked through the alias
+    assert client.post(
+        "/api/v1/current-session/tests/identify/attempts",
+        json={"result": "fail", "note": ""}, headers=auth,
+    ).status_code == 409
+
+    for key in ("identify", "colour"):
+        assert client.post(
+            f"/api/v1/current-session/tests/{key}/attempts",
+            json={"result": "pass"}, headers=auth,
+        ).status_code == 200
+
+    done = client.post("/api/v1/current-session/complete", headers=auth).json()
+    assert done["status"] == "completed_passed"
+
+    # After completion the report alias still resolves (to the completed one)
+    from tl_commissioning_source.api import routes as routes_module
+
+    monkeypatch.setattr(
+        routes_module, "generate_report",
+        lambda state, sid: {"session_id": sid, "revision": 1, "pdf_path": "x.pdf",
+                            "json_path": "x.json", "json_sha256": "0" * 64,
+                            "generated_at": "now"},
+    )
+    report = client.post("/api/v1/current-session/report", headers=auth).json()
+    assert report["session_id"] == done["id"]
+
+    # But attempts against the completed session are gone (404, not 409)
+    assert client.post(
+        "/api/v1/current-session/tests/identify/attempts",
+        json={"result": "pass"}, headers=auth,
+    ).status_code == 404

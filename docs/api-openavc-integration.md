@@ -58,7 +58,18 @@ Tokens expire after `security.token_ttl_seconds` (default 12 h).
 | `POST /api/v1/sessions/{id}/tests/{key}/attempts` | Record pass/fail (`note` required on fail) |
 | `POST /api/v1/sessions/{id}/complete` | Validates and derives Passed/Failed |
 | `POST /api/v1/sessions/{id}/report` | Generate/regenerate PDF+JSON revision |
+| `GET /api/v1/current-session` | The in-progress session (falls back to last completed) |
+| `POST /api/v1/current-session/tests/{key}/attempts` | Record on the active session — no ID plumbing (panel flows) |
+| `POST /api/v1/current-session/complete` | Complete the active session |
+| `POST /api/v1/current-session/report` | Report for the active / most recently completed session |
 | `WS /api/v1/events` | `pattern`, `output`, `audio`, `session`, `attempt`, `fault`, `recovery`, `soak_step`, `soak_complete` |
+
+`POST /api/v1/sessions` accepts `"autostart": true` to create and start a
+session in one call. The `current-session` aliases resolve "the session
+being worked on" server-side (most recent in-progress, falling back to
+most recently completed where sensible) — designed for panel platforms
+whose macros cannot capture and re-send IDs. Concurrent sessions should
+use the explicit `/sessions/{id}` forms.
 
 Rules an adapter can rely on (enforced server-side):
 

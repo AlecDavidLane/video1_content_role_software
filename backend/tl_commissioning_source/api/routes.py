@@ -310,6 +310,8 @@ def create_session(body: schemas.SessionCreate, request: Request):
             selected_tests=body.selected_tests,
             soak_minutes=body.soak_minutes,
         )
+        if body.autostart:
+            session = store.start(session["id"])
     except SessionError as exc:
         raise HTTPException(422, str(exc)) from exc
     return session
@@ -415,6 +417,72 @@ def reopen_session(session_id: str, body: schemas.ReopenRequest, request: Reques
         return _state(request).store.reopen(session_id, body.reason)
     except SessionError as exc:
         raise HTTPException(409, str(exc)) from exc
+
+
+# -- current-session aliases (panel/automation workflows) --------------------
+# Panel platforms (OpenAVC macros, YAML drivers) can't capture and re-send
+# session IDs between calls. These aliases resolve "the session being worked
+# on" server-side: the most recent in-progress/review session, falling back
+# to the most recently completed one where that makes sense. They assume the
+# appliance's normal single-active-session usage; concurrent sessions should
+# use the explicit /sessions/{id} endpoints.
+
+
+def _resolve_current(state, include_completed: bool = False) -> str:
+    row = state.db.query_one(
+        "SELECT id FROM session WHERE status IN ('in_progress','review')"
+        " AND deleted = 0 ORDER BY started_at DESC LIMIT 1"
+    )
+    if row is None and include_completed:
+        row = state.db.query_one(
+            "SELECT id FROM session WHERE status IN ('completed_passed','completed_failed')"
+            " AND deleted = 0 ORDER BY completed_at DESC LIMIT 1"
+        )
+    if row is None:
+        raise HTTPException(
+            404,
+            "No active session. Create one with POST /api/v1/sessions"
+            ' (use "autostart": true to skip the draft stage).',
+        )
+    return row["id"]
+
+
+@api.get("/current-session", tags=["current-session"])
+def get_current_session(request: Request):
+    state = _state(request)
+    return state.store.get_session(_resolve_current(state, include_completed=True))
+
+
+@api.post(
+    "/current-session/tests/{test_key}/attempts",
+    tags=["current-session"],
+    dependencies=[ControlRequired],
+)
+async def current_record_attempt(
+    test_key: str, body: schemas.AttemptCreate, request: Request
+):
+    state = _state(request)
+    return await record_attempt(
+        _resolve_current(state), test_key, body, request
+    )
+
+
+@api.post(
+    "/current-session/complete", tags=["current-session"], dependencies=[ControlRequired]
+)
+async def current_complete(request: Request):
+    state = _state(request)
+    return await complete_session(_resolve_current(state), request)
+
+
+@api.post(
+    "/current-session/report", tags=["current-session"], dependencies=[ControlRequired]
+)
+def current_report(request: Request):
+    """Generate a report for the active session — or, since completion
+    clears the active session, for the most recently completed one."""
+    state = _state(request)
+    return create_report(_resolve_current(state, include_completed=True), request)
 
 
 # -- evidence -------------------------------------------------------------------

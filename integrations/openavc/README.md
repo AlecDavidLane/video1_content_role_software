@@ -71,12 +71,73 @@ Macros/triggers compose naturally: e.g. a "Line-check" macro that steps
 Identify → Colour → Motion with 10-second delays, or a trigger that
 flags the room when `health_ok` goes false.
 
+## 5. Full room workflow: guided testing from the panel
+
+The driver also exposes the guided-session workflow, so a room panel can
+run the whole commissioning sequence — the appliance stays the system of
+record (a FAIL without a note is rejected, and the Passed/Failed outcome
+is derived server-side, so a mis-programmed panel cannot fake a pass).
+
+Session commands (all use the appliance's `current-session` aliases — no
+session-ID plumbing needed in macros):
+
+| Command | Purpose |
+|---|---|
+| `begin_session` | Create **and start** a session (project, room, signal-path description) |
+| `record_pass` / `record_fail` | Answer the current step (`record_fail` requires a note) |
+| `complete_session` | Validate and complete; outcome is derived |
+| `generate_report` | PDF + JSON for the completed session |
+
+Model **one session per signal path** — that is what a session is in the
+appliance's data model. For a room with three displays, three sessions →
+three crisp reports.
+
+`room_commissioning_example.py` in this directory is a ready-to-adapt
+OpenAVC script for a three-display room (left monitor, right monitor,
+projector, one switcher). Each "Test <display>" button powers the
+display, routes the test source through the switcher, starts a TL session
+for that path and steps through the checklist; PASS/FAIL buttons and a
+failure-note input drive the attempts; Complete generates the report.
+Copy it into your project's `scripts/` folder, register it in the `.avc`
+file, set the device IDs / switcher I/O at the top, and create the panel
+elements listed in its docstring.
+
+Photo evidence remains a phone thing (panels have no camera) — both
+interfaces drive the *same session*, so an engineer can attach photos
+from the phone mid-sequence while pass/fail comes from the panel.
+
+## 6. Auto-saving reports to a share
+
+Solve this on the appliance, not in the panel: mount your network share
+and point the reports directory at it — every report (panel- or
+phone-driven) then lands on the share the moment it is generated.
+
+```bash
+# Example: SMB share via /etc/fstab (credentials in a root-only file)
+//fileserver/commissioning /mnt/commissioning cifs \
+  credentials=/etc/tl-commissioning-source/.smbcred,uid=tl-source,gid=tl-source,_netdev 0 0
+```
+
+Then in `/etc/tl-commissioning-source/config.yaml`:
+
+```yaml
+storage:
+  reports_dir: /mnt/commissioning/reports
+```
+
+and `sudo systemctl restart tl-commissioning-backend`. If the share is
+down, report generation fails visibly (nothing is silently lost — the
+session data stays on the appliance and the report can be regenerated).
+Keep `data_dir` and `evidence_dir` local so the appliance works fully
+offline; the share is only the report drop.
+
+Alternative: an OpenAVC script can pull the PDF itself via
+`GET /api/v1/reports/{id}/download` with the same bearer token.
+
 ## Scope
 
-This driver covers **live source control** — the piece an AV control
-processor legitimately owns. The guided commissioning workflow (sessions,
-pass/fail evidence, photos, reports) intentionally stays on the
-appliance's own phone UI and API: those records are the appliance's audit
-trail. If you later want session data on a panel (e.g. showing overall
-progress), read it via `GET /api/v1/sessions/{id}` with the same bearer
-token — the full API is self-documented at `http://<appliance>:8808/api/docs`.
+This driver covers live source control **and** the guided-session
+workflow via the current-session aliases. Deeper session data (attempt
+history, evidence metadata) is available to scripts via
+`GET /api/v1/sessions/{id}` with the same bearer token — the full API is
+self-documented at `http://<appliance>:8808/api/docs`.
