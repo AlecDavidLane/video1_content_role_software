@@ -12,19 +12,21 @@ these element IDs):
     btn_fail                                         fail current step (uses note below)
     input_fail_note                                  text input for the failure note
     btn_complete                                     complete session + generate report
-    lbl_step  / lbl_session / lbl_result             status labels (bind or leave;
-                                                     script writes ui overrides)
+    lbl_step  / lbl_session / lbl_result             labels; bind each one's
+                                                     Shows->Text to var.tl_step_text /
+                                                     var.tl_session_text / var.tl_result_text
 
 Adjust DEVICE IDS, switcher command names and I/O numbers to your rig —
-they're all in the ROOM table below. The test sequence per path is the
-appliance's standard checklist minus audio for video-only paths; edit
-TEST_SEQUENCE to taste (keys: identify, alignment, colour, motion, audio,
-mode, soak).
+they're all in the ROOM table below. TEST_SEQUENCE is passed to
+begin_session so the session's required tests always match the steps the
+panel walks (keys: identify, alignment, colour, motion, audio, mode, soak).
 
 The appliance enforces the rules regardless of what this script does: a
 FAIL without a note is rejected, and a session can only complete as
 Passed when every test's latest attempt passed.
 """
+
+import json
 
 from openavc import on_event, devices, state, log
 
@@ -42,13 +44,18 @@ ROOM_PATHS = {
     "proj":  ("projector",     1, "Switcher in 1 -> out 1 -> Projector"),
 }
 
-TEST_SEQUENCE = ["identify", "alignment", "colour", "motion", "mode"]
+# Must match what begin_session selects, or completion is (rightly)
+# blocked for the unanswered tests.
+TEST_SEQUENCE = ["identify", "alignment", "colour", "motion", "audio", "mode"]
 
 
 def _show(step_text: str = "", session_text: str = "", result_text: str = ""):
-    state.set("ui.lbl_step.label", step_text or None)
-    state.set("ui.lbl_session.label", session_text or None)
-    state.set("ui.lbl_result.label", result_text or None)
+    # Written as project variables; bind each label's Shows->Text to the
+    # matching var.* key in the UI Builder (ui.* label overrides proved
+    # unreliable on some platform versions).
+    state.set("var.tl_step_text", step_text)
+    state.set("var.tl_session_text", session_text)
+    state.set("var.tl_result_text", result_text)
 
 
 def _current_test() -> str | None:
@@ -83,6 +90,7 @@ async def _start_path(path_key: str):
         "project": PROJECT,
         "room": ROOM,
         "path": path_text,
+        "tests": json.dumps(TEST_SEQUENCE),
     })
     state.set("var.tl_step_index", 0)
     state.set("var.tl_path_label", path_text)
