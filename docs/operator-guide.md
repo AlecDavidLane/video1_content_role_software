@@ -9,7 +9,7 @@ For the AV engineer using the appliance on site.
    screen, then the **Identify** pattern.
 2. Join your phone to the same network as the appliance, then either scan
    the QR code shown on the Home screen of a connected browser, or open
-   `http://<appliance-ip>:8080`.
+   `http://<appliance-ip>:8808`.
 3. The first visit prompts **First-run setup**: company name, report accent
    colour, default engineer, appliance identity and the **control PIN**.
    The PIN protects every state-changing action from then on.

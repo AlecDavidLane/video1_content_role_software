@@ -25,7 +25,7 @@ The token is accepted by all state-changing endpoints, stored as a
 secret, and excluded from config exports and diagnostic bundles. Rotate
 by re-running the command.
 
-- Base URL: `http://<appliance>:8080`
+- Base URL: `http://<appliance>:8808`
 - OpenAPI: `GET /api/openapi.json`, interactive docs at `/api/docs`
 - Live events: `WS /api/v1/events` (JSON frames `{type, at, payload}`)
 
@@ -73,7 +73,7 @@ Rules an adapter can rely on (enforced server-side):
 ## Example: drive a full session
 
 ```bash
-B=http://tl-source.local:8080; T=$(curl -s $B/api/v1/auth/token -d '{"pin":"246810"}' -H 'Content-Type: application/json' | jq -r .token)
+B=http://tl-source.local:8808; T=$(curl -s $B/api/v1/auth/token -d '{"pin":"246810"}' -H 'Content-Type: application/json' | jq -r .token)
 H="Authorization: Bearer $T"
 S=$(curl -s -X POST $B/api/v1/sessions -H "$H" -H 'Content-Type: application/json' \
   -d '{"project_name":"Demo","room":"R1","selected_tests":["identify","colour"]}' | jq -r .id)

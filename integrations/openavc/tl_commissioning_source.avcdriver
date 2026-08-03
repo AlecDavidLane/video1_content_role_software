@@ -28,15 +28,15 @@ help:
        `sudo -u tl-source /opt/transition-layer/commissioning-source/venv/bin/tl-source init --generate-api-token`
        (prints the token once; then `sudo systemctl restart tl-commissioning-backend`).
     2. Add this device in OpenAVC with the appliance's IP address,
-       port 8080, authentication "bearer" and that token.
+       port 8808, authentication "bearer" and that token.
     3. The appliance's own guided-test workflow (sessions, evidence,
        reports) stays on its phone UI; this driver covers live source
-       control. The full API is documented at http://<appliance>:8080/api/docs.
+       control. The full API is documented at http://<appliance>:8808/api/docs.
   connection: State-changing calls need the API token — generate one with `tl-source init --generate-api-token` on the appliance and enter it in this device's settings.
 
 default_config:
   host: ""
-  port: 8080
+  port: 8808
   poll_interval: 3
 
 config_schema:
@@ -46,7 +46,7 @@ config_schema:
     label: IP Address / Hostname
   port:
     type: integer
-    default: 8080
+    default: 8808
     label: Port
   auth_type:
     type: enum

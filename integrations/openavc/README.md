@@ -36,7 +36,7 @@ user drivers directory and reload.)
 | Field | Value |
 |---|---|
 | IP Address / Hostname | the appliance's address |
-| Port | `8080` |
+| Port | `8808` |
 | Authentication | `bearer` |
 | API Token | the token from step 1 |
 
@@ -79,4 +79,4 @@ pass/fail evidence, photos, reports) intentionally stays on the
 appliance's own phone UI and API: those records are the appliance's audit
 trail. If you later want session data on a panel (e.g. showing overall
 progress), read it via `GET /api/v1/sessions/{id}` with the same bearer
-token — the full API is self-documented at `http://<appliance>:8080/api/docs`.
+token — the full API is self-documented at `http://<appliance>:8808/api/docs`.

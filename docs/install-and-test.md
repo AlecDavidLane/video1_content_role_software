@@ -3,6 +3,14 @@
 From clean Ubuntu to a tested appliance in two stages: a quick
 functional test (~10 minutes), then the full kiosk appliance setup.
 
+> **Port:** the appliance serves everything on **8808** (chosen so it
+> coexists with an OpenAVC controller, whose default is 8080, on the same
+> machine). Upgrading an install that was configured before this change?
+> The installer never rewrites `/etc/tl-commissioning-source/config.yaml`,
+> so update it manually: `sudo sed -i 's/port: 8080/port: 8808/'
+> /etc/tl-commissioning-source/config.yaml && sudo systemctl restart
+> tl-commissioning-backend`.
+
 > **Supported OS:** the reference target is **Ubuntu 24.04 LTS**
 > (Python 3.12) — use that for production appliances and the recorded
 > role; `packaging/requirements.lock` is pinned against it. On a newer
@@ -78,14 +86,14 @@ running yet. Exit code 0 comes after Stage 2.
 
 Then:
 
-- Open `http://localhost:8080` on the machine — the control UI loads.
+- Open `http://localhost:8808` on the machine — the control UI loads.
 - From a **phone on the same network**, scan the QR code on the Home
-  screen (or browse to `http://<machine-ip>:8080`). Enter the PIN for
+  screen (or browse to `http://<machine-ip>:8808`). Enter the PIN for
   any state-changing action.
 
 ### 6. Quick kiosk test (no appliance setup needed)
 
-Open a second browser window at `http://localhost:8080/kiosk/` and press
+Open a second browser window at `http://localhost:8808/kiosk/` and press
 F11 for fullscreen. Change patterns from the phone — the window should
 update within one second. This proves the entire control path.
 

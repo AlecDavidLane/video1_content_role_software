@@ -26,7 +26,7 @@ One self-contained local web application (no cloud, no accounts):
 | OS control | `xrandr` (modes) and `pactl` (audio sinks), mockable | `display.py`, `audio.py` |
 | Runtime | systemd (backend system unit, kiosk user unit) | `packaging/systemd/` |
 
-All three surfaces are served by the same backend on port 8080:
+All three surfaces are served by the same backend on port 8808:
 
 - `/` — phone/tablet control UI
 - `/kiosk/` — full-screen HDMI test output (holding screen until ready)
@@ -40,9 +40,9 @@ All three surfaces are served by the same backend on port 8080:
 cd backend
 pip install -e ".[dev]"
 export TL_SOURCE_CONFIG=/tmp/tl-dev/config.yaml   # optional; defaults to /etc/...
-tl-source serve                                    # http://127.0.0.1:8080
+tl-source serve                                    # http://127.0.0.1:8808
 
-# Frontend (hot reload, proxies /api to :8080)
+# Frontend (hot reload, proxies /api to :8808)
 cd frontend
 npm install
 npm run dev

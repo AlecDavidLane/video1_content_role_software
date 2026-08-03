@@ -39,8 +39,8 @@ DEFAULTS: dict[str, Any] = {
     },
     "server": {
         "bind_host": "0.0.0.0",
-        "port": 8080,
-        "external_url": "",  # optional override for QR code, e.g. http://tl-source.local:8080
+        "port": 8808,
+        "external_url": "",  # optional override for QR code, e.g. http://tl-source.local:8808
     },
     "security": {
         "pin_hash": "",  # salted sha256, set via first-run or CLI; empty -> setup not complete

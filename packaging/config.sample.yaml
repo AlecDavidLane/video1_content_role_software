@@ -21,7 +21,7 @@ engineer:
 server:
   bind_host: 0.0.0.0          # bind to LAN so a phone can reach the UI (NFR-09:
                               # restrict to a specific interface address if required)
-  port: 8080
+  port: 8808
   external_url: ""            # optional override for the QR code target
 
 security:
