@@ -48,6 +48,7 @@
         "pin_salt": { "type": "string", "description": "Salt for pin_hash. Never exported." },
         "token_ttl_seconds": { "type": "integer", "minimum": 60 },
         "api_token": { "type": "string", "description": "Static bearer token for integrations. Never exported." },
+        "require_pin": { "type": "boolean", "description": "Set false to disable PIN/token protection (default true)." },
         "setup_complete": { "type": "boolean" }
       }
     },

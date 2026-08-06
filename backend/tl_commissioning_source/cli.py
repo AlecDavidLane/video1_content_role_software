@@ -100,6 +100,12 @@ def cmd_init(args: argparse.Namespace) -> int:
     if args.pin:
         config.set_pin(args.pin)
         config.set(("security", "setup_complete"), True)
+    if args.disable_pin:
+        config.set(("security", "require_pin"), False)
+        config.set(("security", "setup_complete"), True)
+        print("PIN/token protection DISABLED - anyone on the LAN can control this appliance")
+    elif args.enable_pin:
+        config.set(("security", "require_pin"), True)
     if args.api_token:
         config.set(("security", "api_token"), args.api_token)
     elif args.generate_api_token:
@@ -246,6 +252,10 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--engineer")
     init.add_argument("--pin", help="set control PIN and mark setup complete")
     init.add_argument("--api-token", help="set a static API token for integrations (OpenAVC, Ansible)")
+    init.add_argument("--disable-pin", action="store_true",
+                      help="turn off PIN/token protection entirely (open LAN control)")
+    init.add_argument("--enable-pin", action="store_true",
+                      help="re-enable PIN/token protection")
     init.add_argument("--generate-api-token", action="store_true",
                       help="generate and print a static API token for integrations")
     init.add_argument("--role-version", help="record the deploying role version")

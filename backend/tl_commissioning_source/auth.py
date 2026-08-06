@@ -49,6 +49,8 @@ def require_control(request: Request) -> None:
     state = request.app.state.appstate
     if not state.config.setup_complete:
         return  # first-run: allow configuration without a token
+    if state.config.get("security", "require_pin", default=True) is False:
+        return  # operator opted out of PIN protection (config: security.require_pin)
     header = request.headers.get("authorization", "")
     token = header.removeprefix("Bearer ").strip()
     if not token:

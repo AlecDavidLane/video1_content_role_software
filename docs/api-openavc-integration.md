@@ -68,8 +68,14 @@ Tokens expire after `security.token_ttl_seconds` (default 12 h).
 session in one call. The `current-session` aliases resolve "the session
 being worked on" server-side (most recent in-progress, falling back to
 most recently completed where sensible) — designed for panel platforms
-whose macros cannot capture and re-send IDs. Concurrent sessions should
-use the explicit `/sessions/{id}` forms.
+whose macros cannot capture and re-send IDs.
+
+Only one session can be active at a time: starting (or reopening) a
+session automatically retires any session still `in_progress`/`review`.
+Retired sessions are soft-deleted with a `session_abandoned` audit event —
+their attempts and evidence stay in the database, they just leave the
+lists. An adapter therefore never has to clean up after an abandoned run;
+pressing a "start path" button is always safe.
 
 Rules an adapter can rely on (enforced server-side):
 

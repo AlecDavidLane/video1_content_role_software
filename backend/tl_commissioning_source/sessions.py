@@ -201,10 +201,40 @@ class SessionStore:
             )
         self.db.execute("UPDATE session SET deleted = 1 WHERE id = ?", (session_id,))
 
+    def abandon_active(self, reason: str, keep: str | None = None) -> list[str]:
+        """Retire every in_progress/review session (single-active rule).
+
+        Only one session can be worked at a time; starting a new one
+        retires anything left behind. Retired sessions are soft-deleted
+        (attempts and evidence remain in the database) and each gets a
+        'session_abandoned' audit event - nothing is destroyed.
+        """
+        rows = self.db.query(
+            "SELECT id FROM session WHERE status IN ('in_progress','review')"
+            " AND deleted = 0"
+        )
+        abandoned = []
+        for row in rows:
+            if keep and row["id"] == keep:
+                continue
+            self.db.execute(
+                "UPDATE session SET deleted = 1 WHERE id = ?", (row["id"],)
+            )
+            self.db.execute(
+                "INSERT INTO system_event (session_id, severity, event_type, message)"
+                " VALUES (?, 'warning', 'session_abandoned', ?)",
+                (row["id"], f"Session abandoned: {reason.strip()}"),
+            )
+            abandoned.append(row["id"])
+        return abandoned
+
     def start(self, session_id: str) -> dict:
         session = self.get_session(session_id)
         if session["status"] != "draft":
             raise SessionError(f"Cannot start a session in state {session['status']}")
+        self.abandon_active(
+            f"Superseded by new session {session_id} (one active session at a time)",
+        )
         self.db.execute(
             "UPDATE session SET status = 'in_progress', started_at = ? WHERE id = ?",
             (utcnow(), session_id),
@@ -359,6 +389,9 @@ class SessionStore:
             raise SessionError("Only completed sessions can be reopened")
         if not reason.strip():
             raise SessionError("Reopening requires a reason")
+        self.abandon_active(
+            f"Superseded by reopened session {session_id} (one active session at a time)",
+        )
         now = utcnow()
         self.db.execute(
             "UPDATE session SET status = 'in_progress', reopened_at = ?,"

@@ -330,3 +330,55 @@ def test_status_reports_next_unanswered_test(client):
     s = client.get("/api/v1/status").json()
     assert s["current_session_status"] == "completed_passed"
     assert s["next_test"] == "" and s["unanswered_count"] == 0
+
+
+def test_only_one_active_session(client):
+    """Starting a new session retires anything left in progress, so the
+    appliance can never accumulate zombie in-progress sessions."""
+    auth = _setup_appliance(client)
+
+    def begin(name):
+        return client.post(
+            "/api/v1/sessions",
+            json={"project_name": name, "selected_tests": ["identify"],
+                  "autostart": True},
+            headers=auth,
+        ).json()
+
+    first = begin("Path A")
+    second = begin("Path B")
+    third = begin("Path C")
+    assert len({first["id"], second["id"], third["id"]}) == 3
+
+    # Only the newest session is visible / in progress.
+    sessions = client.get("/api/v1/sessions").json()["sessions"]
+    active = [s for s in sessions if s["status"] in ("in_progress", "review")]
+    assert [s["id"] for s in active] == [third["id"]]
+
+    # The retired sessions are soft-deleted with an audit trail, not destroyed.
+    events = client.get("/api/v1/system-events").json()["events"]
+    abandoned = [e for e in events if e["event_type"] == "session_abandoned"]
+    assert {e["session_id"] for e in abandoned} == {first["id"], second["id"]}
+
+    # current-session aliases target the survivor.
+    assert client.get("/api/v1/current-session").json()["id"] == third["id"]
+
+
+def test_require_pin_opt_out(client):
+    """security.require_pin=false opens control to the LAN (per-appliance
+    opt-out; the shipped default stays on per NFR-09/AC-13)."""
+    _setup_appliance(client)
+    appstate = client.app.state.appstate
+    assert client.post(
+        "/api/v1/patterns/identify/activate", json={}
+    ).status_code == 401
+
+    appstate.config.set(("security", "require_pin"), False)
+    assert client.post(
+        "/api/v1/patterns/identify/activate", json={}
+    ).status_code == 200
+
+    appstate.config.set(("security", "require_pin"), True)
+    assert client.post(
+        "/api/v1/patterns/identify/activate", json={}
+    ).status_code == 401

@@ -13,6 +13,9 @@ For the AV engineer using the appliance on site.
 3. The first visit prompts **First-run setup**: company name, report accent
    colour, default engineer, appliance identity and the **control PIN**.
    The PIN protects every state-changing action from then on.
+   If a unit lives on a trusted bench network you can switch the PIN off
+   entirely with `sudo -u tl-source tl-source init --disable-pin`
+   (re-enable with `--enable-pin`). The shipped default keeps it on.
 4. Upload your report logo under **Maintain → Branding**.
 
 ## 2. Running a guided test

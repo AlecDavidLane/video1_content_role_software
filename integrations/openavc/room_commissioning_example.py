@@ -155,7 +155,8 @@ async def complete_and_report(event):
     result = state.get(f"device.{TL}.session_status", "unknown")
     if result in ("completed_passed", "completed_failed"):
         await devices.send(TL, "generate_report")
-        _show("", state.get("var.tl_path_label", ""),
+        _show("TEST COMPLETE — select the next signal path",
+              state.get("var.tl_path_label", ""),
               f"Session {result} — report saved on the appliance")
         log.info(f"TL commissioning: {result}, report generated")
     else:

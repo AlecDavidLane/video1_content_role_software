@@ -47,6 +47,10 @@ DEFAULTS: dict[str, Any] = {
         "pin_salt": "",
         "token_ttl_seconds": 43200,
         "setup_complete": False,
+        # Set false to disable PIN/token protection entirely (open LAN
+        # control). Default true - the brief's AC-13 requires protection,
+        # so the shipped default keeps it on; operators may opt out.
+        "require_pin": True,
         # Optional static bearer token for integrations (OpenAVC, Ansible
         # validation). Empty = disabled. Set via `tl-source init --api-token`
         # or --generate-api-token; never exported (FR-05).
