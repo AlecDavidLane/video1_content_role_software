@@ -509,11 +509,11 @@ async def current_complete(request: Request):
 @api.post(
     "/current-session/report", tags=["current-session"], dependencies=[ControlRequired]
 )
-def current_report(request: Request):
+async def current_report(request: Request):
     """Generate a report for the active session — or, since completion
     clears the active session, for the most recently completed one."""
     state = _state(request)
-    return create_report(_resolve_current(state, include_completed=True), request)
+    return await create_report(_resolve_current(state, include_completed=True), request)
 
 
 # -- evidence -------------------------------------------------------------------
@@ -582,11 +582,17 @@ def get_evidence_image(evidence_id: int, request: Request, size: str = "derivati
 
 # -- reports --------------------------------------------------------------------
 @api.post("/sessions/{session_id}/report", tags=["reports"], dependencies=[ControlRequired])
-def create_report(session_id: str, request: Request):
+async def create_report(session_id: str, request: Request):
+    state = _state(request)
     try:
-        return generate_report(_state(request), session_id)
+        # PDF rendering blocks for a few seconds - keep it off the event loop.
+        result = await asyncio.to_thread(generate_report, state, session_id)
     except (ReportError, SessionError) as exc:
         raise HTTPException(409, str(exc)) from exc
+    # Fresh report -> the connected display invites collection: a QR code
+    # straight to the PDF plus "select another signal path".
+    await state.activate_pattern("report")
+    return result
 
 
 @api.get("/sessions/{session_id}/reports", tags=["reports"])
@@ -607,6 +613,38 @@ def recent_reports(request: Request):
         " ORDER BY r.generated_at DESC LIMIT 50"
     )
     return {"reports": [dict(r) for r in rows]}
+
+
+@api.get("/reports/latest/download", tags=["reports"])
+def download_latest_report(request: Request, kind: str = "pdf"):
+    """The newest report, at a stable URL - open read, so a QR code or a
+    bookmark reaches the PDF without any TL UI or login."""
+    state = _state(request)
+    row = state.db.query_one("SELECT * FROM report ORDER BY id DESC LIMIT 1")
+    if row is None:
+        raise HTTPException(404, "No reports have been generated yet")
+    path = row["pdf_path"] if kind == "pdf" else row["json_path"]
+    from pathlib import Path
+
+    if not Path(path).exists():
+        raise HTTPException(410, "Report file no longer exists on disk")
+    return FileResponse(path, filename=Path(path).name)
+
+
+@api.get("/reports/latest/qr.svg", tags=["reports"])
+def latest_report_qr(request: Request):
+    """QR code pointing at the newest report's PDF (shown on the kiosk's
+    report-ready screen)."""
+    state = _state(request)
+    row = state.db.query_one("SELECT id FROM report ORDER BY id DESC LIMIT 1")
+    if row is None:
+        raise HTTPException(404, "No reports have been generated yet")
+    base = state.identity()["control_url"].rstrip("/")
+    url = f"{base}/api/v1/reports/{row['id']}/download"
+    image = qrcode.make(url, image_factory=qrcode.image.svg.SvgPathImage, box_size=12)
+    buf = io.BytesIO()
+    image.save(buf)
+    return Response(buf.getvalue(), media_type="image/svg+xml")
 
 
 @api.get("/reports/{report_id}/download", tags=["reports"])

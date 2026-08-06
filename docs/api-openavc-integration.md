@@ -62,6 +62,8 @@ Tokens expire after `security.token_ttl_seconds` (default 12 h).
 | `POST /api/v1/current-session/tests/{key}/attempts` | Record on the active session — no ID plumbing (panel flows) |
 | `POST /api/v1/current-session/complete` | Complete the active session |
 | `POST /api/v1/current-session/report` | Report for the active / most recently completed session |
+| `GET /api/v1/reports/latest/download` | Newest report PDF (`?kind=json` for the JSON) — open read, bookmarkable |
+| `GET /api/v1/reports/latest/qr.svg` | QR code pointing at the newest report's PDF |
 | `WS /api/v1/events` | `pattern`, `output`, `audio`, `session`, `attempt`, `fault`, `recovery`, `soak_step`, `soak_complete` |
 
 `POST /api/v1/sessions` accepts `"autostart": true` to create and start a
@@ -76,6 +78,12 @@ Retired sessions are soft-deleted with a `session_abandoned` audit event —
 their attempts and evidence stay in the database, they just leave the
 lists. An adapter therefore never has to clean up after an abandoned run;
 pressing a "start path" button is always safe.
+
+Generating a report also switches the connected display to a
+"GET YOUR REPORT" screen: a QR code straight to that report's PDF plus
+"select another signal path to continue". Engineers scan it with a phone
+and get the PDF directly — no appliance UI involved. The screen clears as
+soon as the next pattern is activated (e.g. the next path's Identify).
 
 Rules an adapter can rely on (enforced server-side):
 

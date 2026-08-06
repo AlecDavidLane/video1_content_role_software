@@ -43,6 +43,7 @@ function applyPatternState(p) {
   state.identity = p.identity || state.identity;
   state.output = p.output || state.output;
   state.soak = p.soak || { running: false };
+  state.report = p.report || state.report;
   if (state.pattern !== previous) onPatternChange(previous);
 }
 
@@ -70,9 +71,16 @@ function connect() {
 }
 connect();
 
+let qrImage = null;
 function onPatternChange(previous) {
   if (audioEngine) { audioEngine.stop(); audioEngine = null; }
   if (state.pattern === "audio") audioEngine = new AudioIdent(state.params.tone_hz || 1000);
+  if (state.pattern === "report") {
+    // Fetch the QR for the just-generated report (cache-busted so a new
+    // report on the same screen never shows a stale code).
+    qrImage = new Image();
+    qrImage.src = `/api/v1/reports/latest/qr.svg?v=${Date.now()}`;
+  }
 }
 
 /* ---------------- helpers ---------------- */
@@ -104,6 +112,7 @@ const renderers = {
   audio: drawAudio,
   mode: drawMode,
   soak: drawSoak,
+  report: drawReport,
 };
 
 function drawHolding(w, h, t) {
@@ -400,6 +409,62 @@ function drawSoak(w, h, t) {
     ? `SOAK · step: ${step.toUpperCase()} · elapsed ${fmt(soak.elapsed_seconds)} · remaining ${fmt(soak.remaining_seconds)}${soak.faults ? ` · FAULTS: ${soak.faults}` : ""}`
     : "SOAK · starting…";
   ctx.fillText(label, w * 0.02, stripH * 0.68);
+}
+
+function drawReport(w, h, t) {
+  // End-of-session screen: QR straight to the PDF, no TL UI needed.
+  ctx.fillStyle = "#080c0f";
+  ctx.fillRect(0, 0, w, h);
+  movingBorder(w, h, t, Math.max(4, h * 0.012));
+  ctx.textAlign = "center";
+
+  ctx.fillStyle = "#00d4aa";
+  fitText("", "800", h * 0.09);
+  ctx.fillText("GET YOUR REPORT", w / 2, h * 0.13);
+
+  const rep = state.report || {};
+  if (rep.session_id) {
+    const passed = rep.status === "completed_passed";
+    const refText = `${rep.session_id}  ·  `;
+    const resText = passed ? "PASSED" : "FAILED";
+    fitText("", "600", h * 0.04);
+    let x = (w - ctx.measureText(refText + resText).width) / 2;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#c8ccd2";
+    ctx.fillText(refText, x, h * 0.20);
+    x += ctx.measureText(refText).width;
+    ctx.fillStyle = passed ? "#6fff9f" : "#ff7a7a";
+    ctx.fillText(resText, x, h * 0.20);
+    ctx.textAlign = "center";
+  }
+
+  // QR on a white quiet-zone panel for reliable scanning.
+  const qrSize = h * 0.46;
+  const pad = qrSize * 0.08;
+  const boxSize = qrSize + pad * 2;
+  const boxX = (w - boxSize) / 2;
+  const boxY = h * 0.25;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(boxX, boxY, boxSize, boxSize);
+  if (qrImage && qrImage.complete && qrImage.naturalWidth > 0) {
+    ctx.drawImage(qrImage, boxX + pad, boxY + pad, qrSize, qrSize);
+  } else {
+    ctx.fillStyle = "#333";
+    fitText("", "500", h * 0.03);
+    ctx.fillText("loading QR…", w / 2, boxY + boxSize / 2);
+  }
+
+  ctx.fillStyle = "#c8ccd2";
+  fitText("", "400", h * 0.035);
+  const base = (state.identity && state.identity.control_url) || "";
+  ctx.fillText(
+    `Scan with your phone to download the PDF${base ? `  ·  ${base}/api/v1/reports/latest/download` : ""}`,
+    w / 2, boxY + boxSize + h * 0.055
+  );
+
+  ctx.fillStyle = "#ffd54a";
+  fitText("", "700", h * 0.055);
+  ctx.fillText("SELECT ANOTHER SIGNAL PATH TO CONTINUE", w / 2, h * 0.93);
 }
 
 /* ---------------- audio engine ---------------- */

@@ -157,7 +157,7 @@ async def complete_and_report(event):
         await devices.send(TL, "generate_report")
         _show("TEST COMPLETE — select the next signal path",
               state.get("var.tl_path_label", ""),
-              f"Session {result} — report saved on the appliance")
+              f"Session {result} — scan the QR on the display for the report")
         log.info(f"TL commissioning: {result}, report generated")
     else:
         remaining = _remaining()

@@ -281,6 +281,8 @@ def test_current_session_panel_workflow(client, monkeypatch):
     )
     report = client.post("/api/v1/current-session/report", headers=auth).json()
     assert report["session_id"] == done["id"]
+    # Report generation flips the display to the "get your report" screen.
+    assert client.app.state.appstate.active_pattern == "report"
 
     # But attempts against the completed session are gone (404, not 409)
     assert client.post(
@@ -362,6 +364,60 @@ def test_only_one_active_session(client):
 
     # current-session aliases target the survivor.
     assert client.get("/api/v1/current-session").json()["id"] == third["id"]
+
+
+def test_report_ready_screen_and_latest_download(client, monkeypatch, tmp_path):
+    """Generating a report shows the 'get your report' QR screen on the
+    display, and the latest-report endpoints serve the PDF without auth."""
+    auth = _setup_appliance(client)
+
+    assert client.get("/api/v1/reports/latest/download").status_code == 404
+    assert client.get("/api/v1/reports/latest/qr.svg").status_code == 404
+
+    client.post(
+        "/api/v1/sessions",
+        json={"project_name": "P", "selected_tests": ["identify"],
+              "autostart": True},
+        headers=auth,
+    )
+    client.post("/api/v1/current-session/tests/identify/attempts",
+                json={"result": "pass"}, headers=auth)
+    client.post("/api/v1/current-session/complete", headers=auth)
+
+    pdf = tmp_path / "r.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake")
+    json_file = tmp_path / "r.json"
+    json_file.write_text("{}")
+
+    from tl_commissioning_source.api import routes as routes_module
+
+    def fake_generate(state, sid):
+        state.db.execute(
+            "INSERT INTO report (session_id, revision, pdf_path, json_path,"
+            " json_sha256) VALUES (?,?,?,?,?)",
+            (sid, 1, str(pdf), str(json_file), "0" * 64),
+        )
+        return {"session_id": sid, "revision": 1, "pdf_path": str(pdf),
+                "json_path": str(json_file), "json_sha256": "0" * 64,
+                "generated_at": "now"}
+
+    monkeypatch.setattr(routes_module, "generate_report", fake_generate)
+    assert client.post(
+        "/api/v1/current-session/report", headers=auth
+    ).status_code == 200
+
+    s = client.get("/api/v1/status").json()
+    assert s["pattern"]["active_pattern"] == "report"
+    payload = client.app.state.appstate.pattern_state()
+    assert payload["report"]["status"] == "completed_passed"
+
+    # Open reads: QR scan / bookmark reach the PDF with no login.
+    download = client.get("/api/v1/reports/latest/download")
+    assert download.status_code == 200
+    assert download.content.startswith(b"%PDF")
+    qr = client.get("/api/v1/reports/latest/qr.svg")
+    assert qr.status_code == 200
+    assert b"svg" in qr.content
 
 
 def test_require_pin_opt_out(client):

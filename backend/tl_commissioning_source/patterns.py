@@ -11,6 +11,11 @@ from typing import Any
 
 HOLDING = "holding"  # black holding screen (FR-07); not user-selectable
 
+# End-of-session screen: "get your report" QR + "select another signal
+# path". Activated automatically when a report is generated; a system
+# screen like HOLDING, not a selectable test pattern.
+REPORT_READY = "report"
+
 
 @dataclass(frozen=True)
 class PatternDef:

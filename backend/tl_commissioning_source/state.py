@@ -20,7 +20,14 @@ from .config import Config
 from .db import Database
 from .display import DisplayBackend, DisplayMode, QUICK_MODES, make_display_backend
 from .events import EventHub
-from .patterns import HOLDING, PATTERNS, SOAK_CYCLE, SOAK_STEP_SECONDS, validate_params
+from .patterns import (
+    HOLDING,
+    PATTERNS,
+    REPORT_READY,
+    SOAK_CYCLE,
+    SOAK_STEP_SECONDS,
+    validate_params,
+)
 from .sessions import SessionStore, utcnow
 
 
@@ -83,7 +90,7 @@ class AppState:
 
     # -- pattern control (FR-08) -----------------------------------------
     async def activate_pattern(self, key: str, params: dict[str, Any] | None = None) -> dict:
-        if key != HOLDING and key not in PATTERNS:
+        if key not in (HOLDING, REPORT_READY) and key not in PATTERNS:
             raise ValueError(f"Unknown pattern: {key}")
         clean = validate_params(key, params or {}) if key in PATTERNS else {}
         if key == "soak":
@@ -96,11 +103,22 @@ class AppState:
         await self.hub.publish("pattern", self.pattern_state())
         return self.pattern_state()
 
+    def latest_report(self) -> dict | None:
+        row = self.db.query_one(
+            "SELECT r.id, r.session_id, r.revision, r.generated_at, s.status"
+            " FROM report r JOIN session s ON s.id = r.session_id"
+            " ORDER BY r.id DESC LIMIT 1"
+        )
+        return dict(row) if row else None
+
     def pattern_state(self) -> dict:
         return {
             "active_pattern": self.active_pattern,
             "params": self.active_params,
             "identity": self.identity(),
+            "report": self.latest_report()
+            if self.active_pattern == REPORT_READY
+            else None,
             "output": self.output_state(),
             "audio_enabled": bool(self.config.get("soak", "audio_enabled"))
             if self.soak.running
