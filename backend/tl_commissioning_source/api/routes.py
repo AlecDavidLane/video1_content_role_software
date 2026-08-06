@@ -63,16 +63,28 @@ def status(request: Request):
     current = state.current_session_id()
     # Server-truth guided progress, so panel integrations can follow the
     # appliance instead of counting steps client-side (which drifts the
-    # moment a press double-fires or a call is dropped).
+    # moment a press double-fires or a call is dropped). When nothing is in
+    # progress, report the most recently completed session so a panel keeps
+    # showing "completed_passed/failed" after Complete instead of going
+    # blank (or latching onto an unrelated stale session).
     session_status = ""
     next_test = ""
     unanswered_count = 0
+    if not current:
+        row = state.db.query_one(
+            "SELECT id FROM session WHERE status IN"
+            " ('completed_passed','completed_failed') AND deleted = 0"
+            " ORDER BY completed_at DESC LIMIT 1"
+        )
+        if row:
+            current = row["id"]
     if current:
         session = state.store.get_session(current)
         progress = session["progress"]
         session_status = session["status"]
-        unanswered_count = len(progress["unanswered"])
-        next_test = progress["unanswered"][0] if progress["unanswered"] else ""
+        if session["status"] in ("in_progress", "review"):
+            unanswered_count = len(progress["unanswered"])
+            next_test = progress["unanswered"][0] if progress["unanswered"] else ""
     return {
         "identity": state.identity(),
         "pattern": {"active_pattern": state.active_pattern, "params": state.active_params},

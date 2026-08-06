@@ -323,3 +323,8 @@ def test_status_reports_next_unanswered_test(client):
     s = client.get("/api/v1/status").json()
     assert s["next_test"] == "" and s["unanswered_count"] == 0
     client.post("/api/v1/current-session/complete", headers=auth)
+    # After completion, status keeps reporting the finished session so a
+    # panel can show the outcome instead of going blank.
+    s = client.get("/api/v1/status").json()
+    assert s["current_session_status"] == "completed_passed"
+    assert s["next_test"] == "" and s["unanswered_count"] == 0
