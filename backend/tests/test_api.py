@@ -267,6 +267,8 @@ def test_current_session_panel_workflow(client, monkeypatch):
 
     done = client.post("/api/v1/current-session/complete", headers=auth).json()
     assert done["status"] == "completed_passed"
+    # Completion returns the output to the idle Identify pattern.
+    assert client.app.state.appstate.active_pattern == "identify"
 
     # After completion the report alias still resolves (to the completed one)
     from tl_commissioning_source.api import routes as routes_module

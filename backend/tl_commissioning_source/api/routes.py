@@ -435,6 +435,10 @@ async def complete_session(session_id: str, request: Request):
     await state.hub.publish(
         "session", {"session_id": session_id, "status": session["status"]}
     )
+    # Return the output to its idle identity so the display visibly leaves
+    # the last test pattern when the session ends (mirrors the cold-boot
+    # holding/identify behaviour, FR-40).
+    await state.activate_pattern("identify")
     return session
 
 

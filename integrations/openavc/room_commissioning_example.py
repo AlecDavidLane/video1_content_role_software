@@ -137,13 +137,13 @@ async def record_fail(event):
     test = _next_test()
     if not test:
         return
-    note = (state.get("ui.input_fail_note.value")
-            or state.get("var.input_fail_note") or "").strip()
+    note = (state.get("var.input_fail_note") or "").strip()
     if not note:
-        _show(f"FAIL needs a note — type it and press Enter first ({test.upper()})",
+        _show(f"FAIL needs a note — type it in the note box first ({test.upper()})",
               state.get("var.tl_path_label", ""))
         return  # the appliance would reject it anyway (409)
     await devices.send(TL, "record_fail", {"test": test, "note": note})
+    state.set("var.input_fail_note", "")  # don't leak the note into the next fail
     await _sync()
     await _open_step()
 
@@ -167,7 +167,8 @@ async def complete_and_report(event):
         log.info("TL commissioning: completion blocked")
 
 
-# Capture the fail-note text input when submitted from the panel keyboard.
-@on_event("ui.submit.input_fail_note")
+# The panel's text input emits debounced ui.change events as the user
+# types (~300 ms after the last keystroke) - capture the live value.
+@on_event("ui.change.input_fail_note")
 def keep_note(event):
     state.set("var.input_fail_note", event.get("value", ""))
