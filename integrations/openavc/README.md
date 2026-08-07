@@ -108,11 +108,14 @@ Two bindings matter for a smooth panel:
   Shows → Text to `var.tl_step_text` / `var.tl_session_text` /
   `var.tl_result_text`.
 - **Fail-note input** (`input_fail_note`): bind its Shows → Value to
-  `var.input_fail_note`. The script clears that variable after every
-  recorded FAIL (each failure needs its own note, FR-22); with the
-  binding in place the box visibly empties too. Without it the old note
-  stays *displayed* while the script's copy is empty — the next FAIL
-  press then looks dead when it is actually waiting for a fresh note.
+  `var.input_fail_note` (create the variable from the picker's
+  "+ New Variable…" if it isn't listed yet). The box then always shows
+  the note the next FAIL will attach: it is reused across consecutive
+  fails (one fault, several failing steps — type it once) and cleared
+  automatically when a new path starts. The script must NOT clear it
+  after each fail: OpenAVC won't overwrite a focused text input from a
+  binding, so the box would keep displaying a note the script no longer
+  holds and the next FAIL press would look dead.
 
 Photo evidence remains a phone thing (panels have no camera) — both
 interfaces drive the *same session*, so an engineer can attach photos

@@ -17,9 +17,10 @@ these element IDs):
     btn_fail                                         fail current step (note below)
     input_fail_note                                  text input for the failure note.
                                                      Bind its Shows->Value to
-                                                     var.input_fail_note so the box
-                                                     visibly clears after each FAIL
-                                                     (each failure needs a fresh note)
+                                                     var.input_fail_note - the box then
+                                                     always shows the note the next FAIL
+                                                     will attach (reused across fails,
+                                                     cleared when a new path starts)
     btn_complete                                     fallback: force-complete a session
                                                      (normally automatic after the last step)
     lbl_step / lbl_session / lbl_result              labels; bind each one's
