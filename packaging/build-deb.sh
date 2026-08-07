@@ -203,6 +203,9 @@ install -d -o tl-source -g tl-source \
     /var/log/tl-commissioning-source
 chown -R tl-source:tl-source /etc/tl-commissioning-source
 
+# CLI on the system PATH (works under sudo too, which resets PATH).
+ln -sf "$APP/venv/bin/tl-source" /usr/local/bin/tl-source
+
 systemctl daemon-reload || true
 systemctl enable tl-commissioning-backend.service >/dev/null 2>&1 || true
 systemctl restart tl-commissioning-backend.service || true
@@ -216,6 +219,7 @@ set -e
 if [ "$1" = "remove" ]; then
     systemctl stop tl-commissioning-backend.service || true
     systemctl disable tl-commissioning-backend.service || true
+    rm -f /usr/local/bin/tl-source
 fi
 exit 0
 EOF
