@@ -80,6 +80,7 @@ class AppState:
             "hostname": _hostname(),
             "ip_address": _primary_ip(),
             "control_url": control_url,
+            "panel_url": self.config.get("integration", "panel_url") or "",
             "app_version": __version__,
             "role_version": self._role_version(),
         }

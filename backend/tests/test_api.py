@@ -429,6 +429,22 @@ def test_kiosk_files_are_never_cached(client):
     assert client.get("/kiosk/").headers["cache-control"] == "no-store"
 
 
+def test_boots_to_identify_and_panel_qr(client):
+    """The appliance is self-describing from power-on: startup activates
+    Identify, and a configured panel URL yields a QR for the kiosk."""
+    appstate = client.app.state.appstate
+    assert appstate.active_pattern == "identify"
+
+    assert client.get("/api/v1/integration/panel-qr.svg").status_code == 404
+    assert appstate.identity()["panel_url"] == ""
+
+    appstate.config.set(("integration", "panel_url"), "http://10.0.0.5:8080/panel")
+    response = client.get("/api/v1/integration/panel-qr.svg")
+    assert response.status_code == 200
+    assert b"svg" in response.content
+    assert appstate.identity()["panel_url"] == "http://10.0.0.5:8080/panel"
+
+
 def test_require_pin_opt_out(client):
     """security.require_pin=false opens control to the LAN (per-appliance
     opt-out; the shipped default stays on per NFR-09/AC-13)."""

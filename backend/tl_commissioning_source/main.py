@@ -48,6 +48,12 @@ async def lifespan(app: FastAPI):
     state = AppState(load_config())
     app.state.appstate = state
     state.store.record_event("backend_started", f"Backend started, version {__version__}")
+    startup_pattern = state.config.get("output", "startup_pattern") or "identify"
+    if startup_pattern != "holding":
+        try:
+            await state.activate_pattern(startup_pattern)
+        except ValueError:
+            await state.activate_pattern("identify")
     await state.start_watcher()
     yield
     await state.stop_watcher()

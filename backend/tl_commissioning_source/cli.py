@@ -95,6 +95,8 @@ def cmd_init(args: argparse.Namespace) -> int:
         config.set(("branding", "logo_path"), str(logo.resolve()))
     if args.report_footer:
         config.set(("branding", "report_footer"), args.report_footer)
+    if args.panel_url is not None:
+        config.set(("integration", "panel_url"), args.panel_url)
     if args.engineer:
         config.set(("engineer", "default_name"), args.engineer)
     if args.pin:
@@ -249,6 +251,9 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--accent-colour")
     init.add_argument("--logo")
     init.add_argument("--report-footer")
+    init.add_argument("--panel-url",
+                      help="room-control panel URL (e.g. http://<host>:8080/panel);"
+                      " shown as a QR on the Identify screen. Pass '' to remove.")
     init.add_argument("--engineer")
     init.add_argument("--pin", help="set control PIN and mark setup complete")
     init.add_argument("--api-token", help="set a static API token for integrations (OpenAVC, Ansible)")

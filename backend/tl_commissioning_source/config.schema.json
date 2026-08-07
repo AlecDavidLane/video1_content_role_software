@@ -57,7 +57,8 @@
       "additionalProperties": false,
       "properties": {
         "preferred_connector": { "type": "string" },
-        "default_mode": { "type": "string", "pattern": "^$|^[0-9]+x[0-9]+@[0-9.]+$" }
+        "default_mode": { "type": "string", "pattern": "^$|^[0-9]+x[0-9]+@[0-9.]+$" },
+        "startup_pattern": { "type": "string", "description": "Pattern activated when the backend starts; 'holding' keeps the display black until told (FR-07 strict)." }
       }
     },
     "audio": {
@@ -100,6 +101,13 @@
       "properties": {
         "display_backend": { "enum": ["auto", "xrandr", "mock"] },
         "audio_backend": { "enum": ["auto", "pactl", "mock"] }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "panel_url": { "type": "string", "description": "Room-control panel URL (e.g. an OpenAVC panel); shown as a QR on the Identify screen when set." }
       }
     }
   }

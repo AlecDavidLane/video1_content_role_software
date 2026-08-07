@@ -72,6 +72,7 @@ function connect() {
 connect();
 
 let qrImage = null;
+let panelQrImage = null;
 function onPatternChange(previous) {
   if (audioEngine) { audioEngine.stop(); audioEngine = null; }
   if (state.pattern === "audio") audioEngine = new AudioIdent(state.params.tone_hz || 1000);
@@ -165,6 +166,27 @@ function drawIdentify(w, h, t) {
   fitText("", "500", h * 0.05, "'IBM Plex Mono', 'Courier New', monospace");
   ctx.fillStyle = "#4a9eff";
   ctx.fillText(`FRAME ${String(frameCounter).padStart(7, "0")}`, w / 2, h * 0.85);
+
+  // Room-control panel QR (integration.panel_url), bottom-right corner.
+  if (id.panel_url) {
+    if (!panelQrImage) {
+      panelQrImage = new Image();
+      panelQrImage.src = "/api/v1/integration/panel-qr.svg";
+    }
+    if (panelQrImage.complete && panelQrImage.naturalWidth > 0) {
+      const qrSize = h * 0.2;
+      const pad = qrSize * 0.08;
+      const boxSize = qrSize + pad * 2;
+      const x = w - boxSize - h * 0.045;
+      const y = h - boxSize - h * 0.085;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(x, y, boxSize, boxSize);
+      ctx.drawImage(panelQrImage, x + pad, y + pad, qrSize, qrSize);
+      ctx.fillStyle = "#c8ccd2";
+      fitText("", "600", h * 0.028);
+      ctx.fillText("SCAN FOR ROOM CONTROL", x + boxSize / 2, y + boxSize + h * 0.045);
+    }
+  }
 }
 
 function drawAlignment(w, h, t) {

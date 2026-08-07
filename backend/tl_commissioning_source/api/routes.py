@@ -111,6 +111,20 @@ def identity_qr(request: Request):
     return Response(buf.getvalue(), media_type="image/svg+xml")
 
 
+@api.get("/integration/panel-qr.svg", tags=["status"])
+def panel_qr(request: Request):
+    """QR for the configured room-control panel (integration.panel_url);
+    shown on the Identify screen so a phone reaches the panel directly."""
+    state = _state(request)
+    url = state.config.get("integration", "panel_url") or ""
+    if not url:
+        raise HTTPException(404, "No panel URL configured (integration.panel_url)")
+    image = qrcode.make(url, image_factory=qrcode.image.svg.SvgPathImage, box_size=12)
+    buf = io.BytesIO()
+    image.save(buf)
+    return Response(buf.getvalue(), media_type="image/svg+xml")
+
+
 # -- first-run setup and configuration -------------------------------------------
 @api.get("/setup", tags=["setup"])
 def setup_status(request: Request):

@@ -59,6 +59,11 @@ DEFAULTS: dict[str, Any] = {
     "output": {
         "preferred_connector": "",  # empty -> first connected output
         "default_mode": "",  # e.g. "1920x1080@60"; empty -> current mode
+        # Pattern shown when the backend starts: the Identify screen makes
+        # the appliance self-describing from power-on (source number,
+        # control URL, panel QR). Set "holding" for a black screen until
+        # a pattern is explicitly activated (FR-07 strict behaviour).
+        "startup_pattern": "identify",
     },
     "audio": {
         "preferred_sink": "",  # empty -> first HDMI sink
@@ -81,6 +86,12 @@ DEFAULTS: dict[str, Any] = {
     "hardware": {
         "display_backend": "auto",  # auto | xrandr | mock
         "audio_backend": "auto",  # auto | pactl | mock
+    },
+    "integration": {
+        # URL of a room-control panel (e.g. an OpenAVC panel:
+        # http://<host>:8080/panel). When set, the Identify screen shows a
+        # "scan for room control" QR pointing at it.
+        "panel_url": "",
     },
 }
 
