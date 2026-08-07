@@ -71,8 +71,26 @@ function connect() {
 }
 connect();
 
-let qrImage = null;
-let panelQrImage = null;
+/* QR handling: the backend serves QRs as SVG, but Chromium re-rasterises
+ * an SVG image on EVERY drawImage call - at 60 fps that costs real CPU
+ * (compositor + renderer) and the resulting GC churn shows as periodic
+ * jitter on the output. Each QR is therefore rasterised ONCE into an
+ * offscreen bitmap when it loads; the render loop only blits the bitmap. */
+const QR_RASTER_PX = 1024;
+
+function loadQrBitmap(url, assign) {
+  const img = new Image();
+  img.onload = () => {
+    const off = document.createElement("canvas");
+    off.width = off.height = QR_RASTER_PX;
+    off.getContext("2d").drawImage(img, 0, 0, QR_RASTER_PX, QR_RASTER_PX);
+    assign(off);
+  };
+  img.src = url;
+}
+
+let qrBitmap = null;
+let panelQrBitmap = null;
 let panelQrLoadedFor = "";
 function onPatternChange(previous) {
   if (audioEngine) { audioEngine.stop(); audioEngine = null; }
@@ -80,8 +98,8 @@ function onPatternChange(previous) {
   if (state.pattern === "report") {
     // Fetch the QR for the just-generated report (cache-busted so a new
     // report on the same screen never shows a stale code).
-    qrImage = new Image();
-    qrImage.src = `/api/v1/reports/latest/qr.svg?v=${Date.now()}`;
+    qrBitmap = null;
+    loadQrBitmap(`/api/v1/reports/latest/qr.svg?v=${Date.now()}`, (b) => { qrBitmap = b; });
   }
 }
 
@@ -173,10 +191,13 @@ function drawIdentify(w, h, t) {
   if (id.panel_url) {
     if (id.panel_url !== panelQrLoadedFor) {
       panelQrLoadedFor = id.panel_url;
-      panelQrImage = new Image();
-      panelQrImage.src = `/api/v1/integration/panel-qr.svg?v=${encodeURIComponent(id.panel_url)}`;
+      panelQrBitmap = null;
+      loadQrBitmap(
+        `/api/v1/integration/panel-qr.svg?v=${encodeURIComponent(id.panel_url)}`,
+        (b) => { panelQrBitmap = b; }
+      );
     }
-    if (panelQrImage.complete && panelQrImage.naturalWidth > 0) {
+    if (panelQrBitmap) {
       const qrSize = h * 0.2;
       const pad = qrSize * 0.08;
       const boxSize = qrSize + pad * 2;
@@ -184,7 +205,7 @@ function drawIdentify(w, h, t) {
       const y = h - boxSize - h * 0.085;
       ctx.fillStyle = "#fff";
       ctx.fillRect(x, y, boxSize, boxSize);
-      ctx.drawImage(panelQrImage, x + pad, y + pad, qrSize, qrSize);
+      ctx.drawImage(panelQrBitmap, x + pad, y + pad, qrSize, qrSize);
       ctx.fillStyle = "#c8ccd2";
       fitText("", "600", h * 0.028);
       ctx.fillText("SCAN FOR ROOM CONTROL", x + boxSize / 2, y + boxSize + h * 0.045);
@@ -471,8 +492,8 @@ function drawReport(w, h, t) {
   const boxY = h * 0.25;
   ctx.fillStyle = "#fff";
   ctx.fillRect(boxX, boxY, boxSize, boxSize);
-  if (qrImage && qrImage.complete && qrImage.naturalWidth > 0) {
-    ctx.drawImage(qrImage, boxX + pad, boxY + pad, qrSize, qrSize);
+  if (qrBitmap) {
+    ctx.drawImage(qrBitmap, boxX + pad, boxY + pad, qrSize, qrSize);
   } else {
     ctx.fillStyle = "#333";
     fitText("", "500", h * 0.03);
