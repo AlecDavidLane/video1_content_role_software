@@ -1,0 +1,25 @@
+---
+# openavc_room_control role defaults.
+#
+# Installs OpenAVC (official installer) and restores a captured state
+# snapshot so the machine comes up with the same devices, drivers, panel
+# UI, scripts and Programmer credentials as the machine the snapshot was
+# taken from. Capture on the reference machine with:
+#
+#   sudo systemctl stop openavc
+#   sudo tar czf openavc-state.tgz -C /var/lib openavc
+#   sudo systemctl start openavc
+
+# Path ON THE CONTROLLER to the state tarball. Empty = install OpenAVC
+# bare (unclaimed, no project) and skip the restore.
+openavc_state_src: ""
+
+# How to install. "online" runs the official installer (needs internet on
+# the target; re-running upgrades in place). "skip" assumes OpenAVC is
+# already installed.
+openavc_install: online
+openavc_installer_url: "https://get.openavc.com"
+
+openavc_service: openavc
+openavc_data_dir: /var/lib/openavc
+openavc_port: 8080

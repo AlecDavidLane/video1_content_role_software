@@ -1,0 +1,56 @@
+---
+- name: Install OpenAVC (official installer; upgrade-in-place on re-run)
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -sSL {{ openavc_installer_url }} | bash
+  args:
+    executable: /bin/bash
+    creates: /opt/openavc/venv
+  when: openavc_install == "online"
+
+- name: Check OpenAVC is present
+  ansible.builtin.stat:
+    path: /opt/openavc/venv
+  register: openavc_venv
+
+- name: Fail if OpenAVC missing
+  ansible.builtin.assert:
+    that: openavc_venv.stat.exists
+    fail_msg: "OpenAVC is not installed at /opt/openavc (set openavc_install: online, or install it first)"
+
+- name: Restore captured room-control state
+  when: openavc_state_src | length > 0
+  block:
+    - name: Stop OpenAVC before restoring state
+      ansible.builtin.systemd:
+        name: "{{ openavc_service }}"
+        state: stopped
+
+    - name: Restore {{ openavc_data_dir }} (projects, drivers, panel UI, credentials)
+      ansible.builtin.unarchive:
+        src: "{{ openavc_state_src }}"
+        dest: "{{ openavc_data_dir | dirname }}"
+        owner: openavc
+        group: openavc
+
+    - name: Ensure ownership of the data directory
+      ansible.builtin.file:
+        path: "{{ openavc_data_dir }}"
+        owner: openavc
+        group: openavc
+        recurse: true
+
+- name: Enable and start OpenAVC
+  ansible.builtin.systemd:
+    name: "{{ openavc_service }}"
+    enabled: true
+    state: started
+
+- name: Wait for the panel to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ openavc_port }}/panel/"
+    status_code: 200
+  register: openavc_panel
+  retries: 12
+  delay: 5
+  until: openavc_panel is succeeded

@@ -60,10 +60,41 @@ matches, `tl-source init` rewrites the same configuration, and the GDM /
 dconf files are only rewritten on change. Upgrades are the same play with
 a newer `tl_deb_src`.
 
-## What the role does NOT do
+## Replicating the room-control setup (OpenAVC)
 
-- **OpenAVC** — install it separately if the appliance should also host
-  the room-control panel (see `integrations/openavc/README.md`). The TL
-  appliance defaults to port 8808 specifically so OpenAVC can keep 8080.
+The second role, `openavc_room_control`, makes a fresh machine come up
+exactly like a reference machine — OpenAVC installed, plus the captured
+project: devices, the TL driver, the panel UI, the room script and the
+Programmer credentials. Everything OpenAVC knows lives in
+`/var/lib/openavc`, so replication is a snapshot restore:
+
+```bash
+# On the reference machine (bench):
+sudo systemctl stop openavc
+sudo tar czf openavc-state.tgz -C /var/lib openavc
+sudo systemctl start openavc
+# copy openavc-state.tgz next to the playbook
+```
+
+Then set `openavc_state_src` (see the example playbook). Two things to
+get right:
+
+- **`tl_api_token` must be the same token stored inside the snapshot's
+  TL device** (the one you pasted into the OpenAVC driver config on the
+  bench). Deploy every machine with that vaulted token and the restored
+  panel controls the local appliance out of the box. The panel URL QR
+  needs no attention — `{ip}` resolves per machine.
+- **Simulated devices don't run by themselves.** A restored snapshot
+  lists whatever devices the bench had; simulated ones show offline
+  until the simulator is started (demo rigs) or real hardware is present
+  (deployments). The room script tolerates offline room devices — the
+  TL test flow still runs.
+
+The OpenAVC installer (`openavc_install: online`) needs internet on the
+target and installs the latest release; re-running upgrades in place.
+Set `openavc_install: skip` for machines that already have it.
+
+## What the roles do NOT do
+
 - **Network shares** for auto-saving reports (site-specific; see
   `integrations/openavc/README.md` §6).
