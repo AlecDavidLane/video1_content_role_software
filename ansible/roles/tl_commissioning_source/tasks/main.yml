@@ -81,6 +81,16 @@
   args:
     creates: /etc/systemd/user/graphical-session.target.wants/tl-commissioning-kiosk.service
 
+- name: dconf directories (absent on a fresh install)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /etc/dconf/profile
+    - /etc/dconf/db/local.d
+  when: tl_manage_dconf
+
 - name: dconf profile (system database for session defaults)
   ansible.builtin.copy:
     dest: /etc/dconf/profile/user
