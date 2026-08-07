@@ -26,6 +26,23 @@ KIOSK_DIR = Path(__file__).parent / "kiosk"
 STATIC_DIR = Path(__file__).parent / "static"
 
 
+class NoStoreStaticFiles(StaticFiles):
+    """Static files served with Cache-Control: no-store.
+
+    The kiosk's files are unversioned (no content-hashed names), and
+    without cache headers Chromium applies heuristic caching: after an
+    upgrade the kiosk kept rendering the previous release's JavaScript
+    - new backend screens fell back to a black holding screen. no-store
+    forces a fresh copy on every kiosk (re)load; the files are tiny and
+    local, so there is no cost.
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     state = AppState(load_config())
@@ -49,7 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(api)
 
     if KIOSK_DIR.exists():
-        app.mount("/kiosk", StaticFiles(directory=KIOSK_DIR, html=True), name="kiosk")
+        app.mount("/kiosk", NoStoreStaticFiles(directory=KIOSK_DIR, html=True), name="kiosk")
 
     if (STATIC_DIR / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="ui-assets")

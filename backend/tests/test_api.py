@@ -420,6 +420,15 @@ def test_report_ready_screen_and_latest_download(client, monkeypatch, tmp_path):
     assert b"svg" in qr.content
 
 
+def test_kiosk_files_are_never_cached(client):
+    """Kiosk JS is unversioned; without no-store, Chromium's heuristic
+    cache kept serving the previous release's renderer after upgrades."""
+    response = client.get("/kiosk/patterns.js")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert client.get("/kiosk/").headers["cache-control"] == "no-store"
+
+
 def test_require_pin_opt_out(client):
     """security.require_pin=false opens control to the LAN (per-appliance
     opt-out; the shipped default stays on per NFR-09/AC-13)."""
