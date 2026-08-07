@@ -252,8 +252,9 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--logo")
     init.add_argument("--report-footer")
     init.add_argument("--panel-url",
-                      help="room-control panel URL (e.g. http://<host>:8080/panel);"
-                      " shown as a QR on the Identify screen. Pass '' to remove.")
+                      help="room-control panel URL shown as a QR on the Identify"
+                      " screen. Use {ip} for the appliance's current LAN address"
+                      " (DHCP-safe), e.g. 'http://{ip}:8080/panel'. Pass '' to remove.")
     init.add_argument("--engineer")
     init.add_argument("--pin", help="set control PIN and mark setup complete")
     init.add_argument("--api-token", help="set a static API token for integrations (OpenAVC, Ansible)")

@@ -107,7 +107,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "panel_url": { "type": "string", "description": "Room-control panel URL (e.g. an OpenAVC panel); shown as a QR on the Identify screen when set." }
+        "panel_url": { "type": "string", "description": "Room-control panel URL (e.g. an OpenAVC panel); shown as a QR on the Identify screen when set. {ip} resolves to the appliance's current LAN address at request time (DHCP-safe)." }
       }
     }
   }

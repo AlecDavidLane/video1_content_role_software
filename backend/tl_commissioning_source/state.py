@@ -80,7 +80,11 @@ class AppState:
             "hostname": _hostname(),
             "ip_address": _primary_ip(),
             "control_url": control_url,
-            "panel_url": self.config.get("integration", "panel_url") or "",
+            # {ip} resolves to the current LAN address at request time, so a
+            # DHCP lease change never leaves a stale QR on the display.
+            "panel_url": (self.config.get("integration", "panel_url") or "").replace(
+                "{ip}", _primary_ip()
+            ),
             "app_version": __version__,
             "role_version": self._role_version(),
         }

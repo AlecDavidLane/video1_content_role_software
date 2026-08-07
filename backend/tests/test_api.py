@@ -444,6 +444,13 @@ def test_boots_to_identify_and_panel_qr(client):
     assert b"svg" in response.content
     assert appstate.identity()["panel_url"] == "http://10.0.0.5:8080/panel"
 
+    # {ip} resolves to the current LAN address per request (DHCP-safe).
+    appstate.config.set(("integration", "panel_url"), "http://{ip}:8080/panel")
+    resolved = appstate.identity()["panel_url"]
+    assert "{ip}" not in resolved
+    assert resolved.startswith("http://") and resolved.endswith(":8080/panel")
+    assert client.get("/api/v1/integration/panel-qr.svg").status_code == 200
+
 
 def test_require_pin_opt_out(client):
     """security.require_pin=false opens control to the LAN (per-appliance

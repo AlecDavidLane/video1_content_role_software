@@ -114,9 +114,11 @@ def identity_qr(request: Request):
 @api.get("/integration/panel-qr.svg", tags=["status"])
 def panel_qr(request: Request):
     """QR for the configured room-control panel (integration.panel_url);
-    shown on the Identify screen so a phone reaches the panel directly."""
+    shown on the Identify screen so a phone reaches the panel directly.
+    An {ip} placeholder resolves to the current LAN address per request,
+    so the QR follows DHCP lease changes."""
     state = _state(request)
-    url = state.config.get("integration", "panel_url") or ""
+    url = state.identity()["panel_url"]
     if not url:
         raise HTTPException(404, "No panel URL configured (integration.panel_url)")
     image = qrcode.make(url, image_factory=qrcode.image.svg.SvgPathImage, box_size=12)

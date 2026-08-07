@@ -73,6 +73,7 @@ connect();
 
 let qrImage = null;
 let panelQrImage = null;
+let panelQrLoadedFor = "";
 function onPatternChange(previous) {
   if (audioEngine) { audioEngine.stop(); audioEngine = null; }
   if (state.pattern === "audio") audioEngine = new AudioIdent(state.params.tone_hz || 1000);
@@ -168,10 +169,12 @@ function drawIdentify(w, h, t) {
   ctx.fillText(`FRAME ${String(frameCounter).padStart(7, "0")}`, w / 2, h * 0.85);
 
   // Room-control panel QR (integration.panel_url), bottom-right corner.
+  // Reloaded whenever the resolved URL changes (e.g. a new DHCP lease).
   if (id.panel_url) {
-    if (!panelQrImage) {
+    if (id.panel_url !== panelQrLoadedFor) {
+      panelQrLoadedFor = id.panel_url;
       panelQrImage = new Image();
-      panelQrImage.src = "/api/v1/integration/panel-qr.svg";
+      panelQrImage.src = `/api/v1/integration/panel-qr.svg?v=${encodeURIComponent(id.panel_url)}`;
     }
     if (panelQrImage.complete && panelQrImage.naturalWidth > 0) {
       const qrSize = h * 0.2;
