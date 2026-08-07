@@ -16,8 +16,8 @@
     - role: tl_commissioning_source
       vars:
         tl_deb_src: "{{ playbook_dir }}/../dist/tl-commissioning-source_0.1.21_amd64.deb"
-        tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(play_hosts.index(inventory_hostname) + 1) }}"
-        tl_source_number: "{{ play_hosts.index(inventory_hostname) + 1 }}"
+        tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(ansible_play_batch.index(inventory_hostname) + 1) }}"
+        tl_source_number: "{{ ansible_play_batch.index(inventory_hostname) + 1 }}"
         tl_company: "Transition Layer"
         tl_pin: "{{ vault_tl_pin }}"              # keep secrets in ansible-vault
         # MUST match the token stored in the OpenAVC snapshot's TL device,

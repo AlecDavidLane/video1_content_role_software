@@ -18,8 +18,8 @@
     - role: tl_commissioning_source
       vars:
         tl_deb_src: "{{ artifacts_dir }}/tl-commissioning-source.deb"
-        tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(play_hosts.index(inventory_hostname) + 1) }}"
-        tl_source_number: "{{ play_hosts.index(inventory_hostname) + 1 }}"
+        tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(ansible_play_batch.index(inventory_hostname) + 1) }}"
+        tl_source_number: "{{ ansible_play_batch.index(inventory_hostname) + 1 }}"
         tl_company: "Transition Layer"
         tl_pin: "{{ tl_env_pin }}"
         tl_disable_pin: "{{ tl_env_pin | length == 0 }}"
