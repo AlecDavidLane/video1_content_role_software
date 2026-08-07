@@ -1,5 +1,32 @@
 # Deploying with Ansible
 
+## The two-step deployment (bootstrap + one command)
+
+Fastest path from a fresh machine to a finished appliance:
+
+**Step 1 — on the target machine** (the only time you touch it):
+
+```bash
+sudo bash ansible/bootstrap/linux-ssh-bootstrap.sh --username installer --sudo-user
+# note the machine's IP: hostname -I
+```
+
+**Step 2 — on your controller** (Mac: `brew install ansible`), from a
+clone of this repo with the artifacts in place (`ansible/artifacts/`,
+see the README there):
+
+```bash
+export TL_API_TOKEN=...        # must match the OpenAVC snapshot's token
+export TL_PIN=...              # optional; unset = PIN disabled
+./ansible/deploy.sh <target-ip>
+```
+
+You'll be prompted twice (the target user's password for the SSH key
+install, then sudo). The play installs the TL appliance, installs
+OpenAVC, restores your captured room-control project, and reboots — the
+machine comes back up in the finished state: fullscreen Identify with
+the room-control QR, panel ready.
+
 The `tl_commissioning_source` role turns a fresh **Ubuntu 24.04 LTS
 (Xorg)** machine into a complete TL commissioning test source appliance:
 

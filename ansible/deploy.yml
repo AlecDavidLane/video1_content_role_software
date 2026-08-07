@@ -1,0 +1,38 @@
+---
+# One-command appliance deployment, driven by deploy.sh from a controller
+# (e.g. a Mac). Artifacts are read from ansible/artifacts/:
+#
+#   artifacts/tl-commissioning-source.deb   built by packaging/build-deb.sh
+#   artifacts/openavc-state.tgz             captured from the reference bench
+#
+# Secrets come from the environment (deploy.sh passes them through):
+#   TL_API_TOKEN  required - must match the token inside the OpenAVC snapshot
+#   TL_PIN        optional - empty means PIN protection is disabled
+
+- hosts: test_sources
+  become: true
+  vars:
+    artifacts_dir: "{{ playbook_dir }}/artifacts"
+    tl_env_pin: "{{ lookup('env', 'TL_PIN') | default('', true) }}"
+  roles:
+    - role: tl_commissioning_source
+      vars:
+        tl_deb_src: "{{ artifacts_dir }}/tl-commissioning-source.deb"
+        tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(play_hosts.index(inventory_hostname) + 1) }}"
+        tl_source_number: "{{ play_hosts.index(inventory_hostname) + 1 }}"
+        tl_company: "Transition Layer"
+        tl_pin: "{{ tl_env_pin }}"
+        tl_disable_pin: "{{ tl_env_pin | length == 0 }}"
+        tl_api_token: "{{ lookup('env', 'TL_API_TOKEN') }}"
+        tl_panel_url: "http://{ip}:8080/panel"
+        tl_kiosk_user: kiosk
+        tl_reboot: false
+
+    - role: openavc_room_control
+      vars:
+        openavc_state_src: "{{ artifacts_dir }}/openavc-state.tgz"
+
+  post_tasks:
+    - name: Reboot into the finished appliance
+      ansible.builtin.reboot:
+        reboot_timeout: 300
