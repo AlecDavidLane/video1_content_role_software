@@ -127,6 +127,7 @@ async def _start_path(path_key):
         "tests": json.dumps(TEST_SEQUENCE),
     })
     state.set("var.tl_path_label", path_text)
+    state.set("var.input_fail_note", "")  # fresh path, fresh note box
     log.info(f"TL commissioning: started path '{path_key}' ({path_text})")
     await _sync()
     await _open_step()
@@ -167,8 +168,12 @@ async def record_fail(event):
         _show(f"FAIL needs a note — type it in the note box first ({test.upper()})",
               state.get("var.tl_path_label", ""))
         return  # the appliance would reject it anyway (409)
+    # The note stays in the box afterwards: consecutive fails for the same
+    # fault reuse it (the box always shows what the next FAIL will attach).
+    # It clears when a new path starts. Clearing it here instead looks
+    # broken on the panel - OpenAVC won't overwrite a focused text input,
+    # so the box keeps showing a note the script no longer holds.
     await devices.send(TL, "record_fail", {"test": test, "note": note})
-    state.set("var.input_fail_note", "")  # don't leak the note into the next fail
     await _sync()
     await _open_step()
 
