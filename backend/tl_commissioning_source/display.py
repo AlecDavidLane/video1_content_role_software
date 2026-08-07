@@ -100,8 +100,13 @@ class XrandrBackend(DisplayBackend):
     _RATE_RE = re.compile(r"(\d+\.\d+)(\*?)(\+?)")
 
     def _query(self) -> str:
+        # --current reads the X server's cached state. Plain --query forces
+        # a hardware EDID re-probe, which visibly hitches the video output
+        # on some GPU/monitor combinations - and this runs every ~2 s from
+        # the disconnect watcher. Hotplug detection is unaffected: the X
+        # server updates its state from kernel events on its own.
         return subprocess.run(
-            ["xrandr", "--query"], capture_output=True, text=True, timeout=10, check=True
+            ["xrandr", "--current"], capture_output=True, text=True, timeout=10, check=True
         ).stdout
 
     def list_outputs(self) -> list[Output]:
