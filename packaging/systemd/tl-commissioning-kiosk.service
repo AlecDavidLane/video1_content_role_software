@@ -20,8 +20,13 @@ ExecStartPre=/bin/sh -c 'until curl -s -o /dev/null http://127.0.0.1:8808/health
 # Let the backend service (user tl-source) drive xrandr on this session's
 # X server for output-mode control (FR-11..14).
 ExecStartPre=-/usr/bin/xhost +SI:localuser:tl-source
+# A leftover browser holding the kiosk profile makes every new launch
+# forward a window to it and exit - systemd then restart-loops, opening
+# window after window. Kill any survivor before launching.
+ExecStartPre=-/usr/bin/pkill -f tl-kiosk-profile
 ExecStart=/usr/bin/chromium-browser \
     --kiosk \
+    --no-first-run \
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \
