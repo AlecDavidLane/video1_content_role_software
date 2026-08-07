@@ -116,9 +116,14 @@ async def _finish_session():
 async def _start_path(path_key):
     display_id, output, path_text = ROOM_PATHS[path_key]
 
-    # Room prep: display on, route the test source to this path.
-    await devices.send(display_id, "power_on")
-    await devices.send(SWITCHER, "route", {"input": TL_INPUT, "output": output})
+    # Room prep: display on, route the test source to this path. Must
+    # never block the test - an offline display/switcher (or an
+    # un-started simulator) only skips power/routing.
+    try:
+        await devices.send(display_id, "power_on")
+        await devices.send(SWITCHER, "route", {"input": TL_INPUT, "output": output})
+    except Exception as exc:  # noqa: BLE001
+        log.info(f"room prep failed ({exc}) - continuing with the TL session anyway")
 
     # One TL session per signal path (a session IS a path in the appliance).
     await devices.send(TL, "begin_session", {
