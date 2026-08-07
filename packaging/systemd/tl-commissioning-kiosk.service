@@ -41,8 +41,11 @@ ExecStart=/usr/bin/chromium-browser \
     --disable-features=TranslateUI \
     --autoplay-policy=no-user-gesture-required \
     --check-for-update-interval=31536000 \
-    --user-data-dir=%h/.tl-kiosk-profile \
+    --user-data-dir=%h/tl-kiosk-profile \
     --app=http://127.0.0.1:8808/kiosk/
+# Belt and braces for the boot race: whatever state the window mapped in,
+# force it fullscreen via the window manager once it exists.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 30); do sleep 1; wmctrl -r "TL Test Output" -b add,fullscreen && exit 0; done; exit 0'
 Restart=always
 RestartSec=2
 
