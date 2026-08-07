@@ -16,7 +16,8 @@ these element IDs):
     btn_pass                                         pass current step
     btn_fail                                         fail current step (note below)
     input_fail_note                                  text input for the failure note
-    btn_complete                                     complete session + generate report
+    btn_complete                                     fallback: force-complete a session
+                                                     (normally automatic after the last step)
     lbl_step / lbl_session / lbl_result              labels; bind each one's
                                                      Shows->Text to var.tl_step_text /
                                                      var.tl_session_text / var.tl_result_text
@@ -78,13 +79,33 @@ async def _sync(settle=1.5):
 async def _open_step():
     test = _next_test()
     if not test:
-        _show("All steps answered — press COMPLETE",
-              state.get("var.tl_path_label", ""))
+        # Last step answered -> finish the session right now: complete,
+        # generate the report, and the appliance shows the QR screen.
+        await _finish_session()
         return
     await devices.send(TL, f"show_{test}")
     done = TOTAL - _remaining()
     _show(f"Step {done + 1}/{TOTAL}: {test.upper()}",
           state.get("var.tl_path_label", ""))
+
+
+async def _finish_session():
+    await devices.send(TL, "complete_session")
+    await _sync(settle=2.5)
+    result = state.get(f"device.{TL}.session_status", "unknown")
+    if result in ("completed_passed", "completed_failed"):
+        await devices.send(TL, "generate_report")
+        _show("TEST COMPLETE — select the next signal path",
+              state.get("var.tl_path_label", ""),
+              f"Session {result} — scan the QR on the display for the report")
+        log.info(f"TL commissioning: {result}, report generated")
+    else:
+        remaining = _remaining()
+        _show(f"Completion BLOCKED — {remaining} step(s) unanswered"
+              f" (next: {_next_test().upper() or '?'})",
+              state.get("var.tl_path_label", ""),
+              "Not completed — answer the remaining steps (panel or phone Review)")
+        log.info("TL commissioning: completion blocked")
 
 
 async def _start_path(path_key):
@@ -148,24 +169,11 @@ async def record_fail(event):
     await _open_step()
 
 
+# Fallback only: sessions now finish automatically when the last step is
+# answered (_open_step -> _finish_session). Kept for stuck sessions.
 @on_event("ui.press.btn_complete")
 async def complete_and_report(event):
-    await devices.send(TL, "complete_session")
-    await _sync(settle=2.5)
-    result = state.get(f"device.{TL}.session_status", "unknown")
-    if result in ("completed_passed", "completed_failed"):
-        await devices.send(TL, "generate_report")
-        _show("TEST COMPLETE — select the next signal path",
-              state.get("var.tl_path_label", ""),
-              f"Session {result} — scan the QR on the display for the report")
-        log.info(f"TL commissioning: {result}, report generated")
-    else:
-        remaining = _remaining()
-        _show(f"Completion BLOCKED — {remaining} step(s) unanswered"
-              f" (next: {_next_test().upper() or '?'})",
-              state.get("var.tl_path_label", ""),
-              "Not completed — answer the remaining steps (panel or phone Review)")
-        log.info("TL commissioning: completion blocked")
+    await _finish_session()
 
 
 # The panel's text input emits debounced ui.change events as the user
