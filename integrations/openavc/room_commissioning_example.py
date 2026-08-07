@@ -15,7 +15,11 @@ these element IDs):
     btn_test_left / btn_test_right / btn_test_proj   start a path's session
     btn_pass                                         pass current step
     btn_fail                                         fail current step (note below)
-    input_fail_note                                  text input for the failure note
+    input_fail_note                                  text input for the failure note.
+                                                     Bind its Shows->Value to
+                                                     var.input_fail_note so the box
+                                                     visibly clears after each FAIL
+                                                     (each failure needs a fresh note)
     btn_complete                                     fallback: force-complete a session
                                                      (normally automatic after the last step)
     lbl_step / lbl_session / lbl_result              labels; bind each one's
