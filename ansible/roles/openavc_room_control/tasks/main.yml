@@ -1,4 +1,12 @@
 ---
+- name: Ensure curl is present (fresh installs lack it)
+  ansible.builtin.apt:
+    name: curl
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: openavc_install == "online"
+
 - name: Install OpenAVC (official installer; upgrade-in-place on re-run)
   ansible.builtin.shell: |
     set -o pipefail
