@@ -15,7 +15,7 @@
   roles:
     - role: tl_commissioning_source
       vars:
-        tl_deb_src: "{{ playbook_dir }}/../dist/tl-commissioning-source_0.1.17_amd64.deb"
+        tl_deb_src: "{{ playbook_dir }}/../dist/tl-commissioning-source_0.1.18_amd64.deb"
         tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(play_hosts.index(inventory_hostname) + 1) }}"
         tl_source_number: "{{ play_hosts.index(inventory_hostname) + 1 }}"
         tl_company: "Transition Layer"
