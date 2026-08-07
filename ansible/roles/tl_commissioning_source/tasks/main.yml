@@ -1,0 +1,133 @@
+---
+# Turns a fresh Ubuntu 24.04 (Xorg) machine into a TL commissioning test
+# source appliance: install the deb, configure identity/branding/security
+# non-interactively via the tl-source CLI (§12), set up kiosk autostart,
+# and validate with the healthcheck (AC-14).
+
+- name: Check required variables
+  ansible.builtin.assert:
+    that:
+      - tl_deb_src | length > 0
+    fail_msg: "tl_deb_src must point to the built .deb on the controller"
+
+- name: Copy package to the appliance
+  ansible.builtin.copy:
+    src: "{{ tl_deb_src }}"
+    dest: /tmp/tl-commissioning-source.deb
+    mode: "0644"
+
+- name: Install the package (installs venv, services, CLI symlink)
+  ansible.builtin.apt:
+    deb: /tmp/tl-commissioning-source.deb
+  notify: restart tl backend
+
+- name: Copy report logo
+  ansible.builtin.copy:
+    src: "{{ tl_logo_src }}"
+    dest: /etc/tl-commissioning-source/logo.png
+    owner: tl-source
+    group: tl-source
+    mode: "0644"
+  when: tl_logo_src | length > 0
+
+- name: Build tl-source init arguments
+  ansible.builtin.set_fact:
+    tl_init_args: >-
+      {{ []
+         + (['--appliance-id', tl_appliance_id] if tl_appliance_id else [])
+         + (['--friendly-name', tl_friendly_name] if tl_friendly_name else [])
+         + (['--source-number', tl_source_number | string] if tl_source_number | int > 0 else [])
+         + (['--company', tl_company] if tl_company else [])
+         + (['--accent-colour', tl_accent_colour] if tl_accent_colour else [])
+         + (['--report-footer', tl_report_footer] if tl_report_footer else [])
+         + (['--engineer', tl_engineer] if tl_engineer else [])
+         + (['--logo', '/etc/tl-commissioning-source/logo.png'] if tl_logo_src else [])
+         + (['--pin', tl_pin] if tl_pin else [])
+         + (['--disable-pin'] if tl_disable_pin else [])
+         + (['--api-token', tl_api_token] if tl_api_token else [])
+         + (['--panel-url', tl_panel_url] if tl_panel_url else [])
+         + (['--role-version', tl_role_version]) }}
+
+- name: Configure the appliance (tl-source init)
+  ansible.builtin.command:
+    argv: "{{ ['/usr/local/bin/tl-source', 'init'] + tl_init_args }}"
+  become: true
+  become_user: tl-source
+  no_log: "{{ (tl_pin | length > 0) or (tl_api_token | length > 0) }}"
+  changed_when: true
+  notify: restart tl backend
+
+# -- kiosk autostart ----------------------------------------------------------
+
+- name: Create kiosk user
+  ansible.builtin.user:
+    name: "{{ tl_kiosk_user }}"
+    shell: /bin/bash
+    password: "!"        # no password login; autologin via GDM
+  when: tl_kiosk_user_create
+
+- name: Enable GDM autologin on Xorg
+  ansible.builtin.template:
+    src: gdm-custom.conf.j2
+    dest: /etc/gdm3/custom.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  when: tl_manage_autologin
+
+- name: Enable the kiosk unit for all users (starts with the desktop session)
+  ansible.builtin.command: systemctl --global enable tl-commissioning-kiosk.service
+  args:
+    creates: /etc/systemd/user/graphical-session.target.wants/tl-commissioning-kiosk.service
+
+- name: dconf profile (system database for session defaults)
+  ansible.builtin.copy:
+    dest: /etc/dconf/profile/user
+    content: |
+      user-db:user
+      system-db:local
+    mode: "0644"
+  when: tl_manage_dconf
+
+- name: Never blank, lock or sleep the test output
+  ansible.builtin.copy:
+    dest: /etc/dconf/db/local.d/00-tl-kiosk
+    content: |
+      [org/gnome/desktop/session]
+      idle-delay=uint32 0
+
+      [org/gnome/desktop/screensaver]
+      lock-enabled=false
+
+      [org/gnome/settings-daemon/plugins/power]
+      sleep-inactive-ac-type='nothing'
+    mode: "0644"
+  when: tl_manage_dconf
+  notify: dconf update
+
+# -- validation (AC-14) --------------------------------------------------------
+
+- name: Flush handlers so the backend restarts before validation
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait until the appliance reports healthy or degraded-but-up
+  ansible.builtin.command: /usr/local/bin/tl-source healthcheck
+  register: tl_health
+  # Exit 0 = healthy. Exit 1 = up but a check fails - on first deploy that
+  # is expected (kiosk_connected is false until the reboot brings up the
+  # desktop session), so accept both and show the payload.
+  failed_when: tl_health.rc not in [0, 1]
+  retries: 12
+  delay: 5
+  until: tl_health.rc in [0, 1]
+  changed_when: false
+
+- name: Show healthcheck result
+  ansible.builtin.debug:
+    msg: "{{ tl_health.stdout_lines }}"
+
+- name: Reboot into the kiosk
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: tl_reboot

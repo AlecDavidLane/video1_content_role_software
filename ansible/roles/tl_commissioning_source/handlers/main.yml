@@ -1,0 +1,9 @@
+---
+- name: restart tl backend
+  ansible.builtin.systemd:
+    name: tl-commissioning-backend
+    state: restarted
+
+- name: dconf update
+  ansible.builtin.command: dconf update
+  changed_when: true

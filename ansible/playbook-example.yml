@@ -1,0 +1,26 @@
+---
+# Example: turn NUCs in the [test_sources] inventory group into TL
+# commissioning test source appliances.
+#
+#   ansible-playbook -i inventory.ini ansible/playbook-example.yml
+#
+# Inventory example (inventory.ini):
+#   [test_sources]
+#   tl-source-01 ansible_host=192.168.1.50 ansible_user=installer
+#
+# Build the deb first: ./packaging/build-deb.sh  (on a matching Ubuntu 24.04)
+
+- hosts: test_sources
+  become: true
+  roles:
+    - role: tl_commissioning_source
+      vars:
+        tl_deb_src: "{{ playbook_dir }}/../dist/tl-commissioning-source_0.1.17_amd64.deb"
+        tl_appliance_id: "TL-TESTSOURCE-{{ '%02d' | format(play_hosts.index(inventory_hostname) + 1) }}"
+        tl_source_number: "{{ play_hosts.index(inventory_hostname) + 1 }}"
+        tl_company: "Transition Layer"
+        tl_pin: "{{ vault_tl_pin }}"              # keep secrets in ansible-vault
+        tl_api_token: "{{ vault_tl_api_token }}"
+        tl_panel_url: "http://{ip}:8080/panel"    # literal {ip}: resolved on-appliance
+        tl_kiosk_user: kiosk
+        tl_reboot: true

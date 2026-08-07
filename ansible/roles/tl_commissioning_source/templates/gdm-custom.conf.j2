@@ -1,0 +1,15 @@
+# Managed by Ansible (tl_commissioning_source role) - do not edit by hand.
+# Autologin straight into the kiosk session. WaylandEnable=false forces
+# Xorg: the appliance's output-mode control (xrandr) requires it.
+[daemon]
+AutomaticLoginEnable=true
+AutomaticLogin={{ tl_kiosk_user }}
+WaylandEnable=false
+
+[security]
+
+[xdmcp]
+
+[chooser]
+
+[debug]

@@ -24,6 +24,9 @@ ExecStartPre=-/usr/bin/xhost +SI:localuser:tl-source
 # forward a window to it and exit - systemd then restart-loops, opening
 # window after window. Kill any survivor before launching.
 ExecStartPre=-/usr/bin/pkill -f tl-kiosk-profile
+# A test source must never blank: disable X screensaver and DPMS for
+# this session (GNOME idle/lock is handled by the deployment's dconf).
+ExecStartPre=-/usr/bin/xset s off -dpms
 ExecStart=/usr/bin/chromium-browser \
     --kiosk \
     --no-first-run \

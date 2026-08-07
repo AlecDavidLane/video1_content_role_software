@@ -132,14 +132,19 @@ sudo adduser --disabled-password --gecos "" kiosk
 #    IMPORTANT: select "Ubuntu on Xorg" at the login screen once —
 #    Wayland is not supported in v1 (xrandr output control).
 
-# 3. Enable the kiosk unit for that user
-sudo loginctl enable-linger kiosk
-sudo -u kiosk XDG_RUNTIME_DIR=/run/user/$(id -u kiosk) \
-  systemctl --user enable tl-commissioning-kiosk
+# 3. Enable the kiosk unit for every desktop session
+sudo systemctl --global enable tl-commissioning-kiosk
 
-# 4. Disable screen blanking in the kiosk session (session autostart):
-#    xset s off -dpms
+# 4. Disable GNOME idle blanking / locking / sleep for the kiosk user
+#    (X-level blanking is already disabled by the kiosk unit via xset):
+sudo -u kiosk dbus-launch gsettings set org.gnome.desktop.session idle-delay 0
+sudo -u kiosk dbus-launch gsettings set org.gnome.desktop.screensaver lock-enabled false
+sudo -u kiosk dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
 ```
+
+> Deploying a fleet? The Ansible role in `ansible/` does all of Stage 1
+> and Stage 2 (install, configure, autologin, kiosk, validation) in one
+> play — see `ansible/README.md`.
 
 Reboot. The HDMI output comes up black (holding screen), then shows
 **Identify** once the backend is ready — no cursor, no desktop chrome —

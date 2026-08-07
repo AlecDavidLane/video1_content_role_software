@@ -1,0 +1,37 @@
+---
+# tl_commissioning_source role defaults.
+# Every value here can be overridden per host/group; see ansible/README.md.
+
+# Path ON THE CONTROLLER to the built .deb (from packaging/build-deb.sh).
+# Required.
+tl_deb_src: ""
+
+# -- appliance identity / branding (all optional; empty = leave unchanged) --
+tl_appliance_id: ""            # e.g. TL-TESTSOURCE-01
+tl_friendly_name: ""
+tl_source_number: 0            # 0 = leave unchanged
+tl_company: ""
+tl_accent_colour: ""           # e.g. "#00d4aa"
+tl_report_footer: ""
+tl_engineer: ""                # default engineer name
+tl_logo_src: ""                # path on the controller to a PNG logo
+
+# -- security ---------------------------------------------------------------
+tl_pin: ""                     # set the control PIN (marks setup complete)
+tl_disable_pin: false          # true = open LAN control (trusted networks only)
+tl_api_token: ""               # static bearer token for integrations (OpenAVC)
+
+# -- integration ------------------------------------------------------------
+# Room-control panel QR on the Identify screen. {ip} resolves to the
+# appliance's current LAN address at request time (DHCP-safe).
+tl_panel_url: ""               # e.g. "http://{ip}:8080/panel"
+
+# -- kiosk / autostart --------------------------------------------------------
+tl_kiosk_user: kiosk           # desktop user that runs the kiosk browser
+tl_kiosk_user_create: true     # create the user if missing
+tl_manage_autologin: true      # write /etc/gdm3/custom.conf (autologin + Xorg)
+tl_manage_dconf: true          # disable idle blanking/locking via dconf
+tl_reboot: false               # reboot at the end when kiosk config changed
+
+# Recorded on the appliance via `tl-source init --role-version` (FR-40).
+tl_role_version: "1.0.0"
