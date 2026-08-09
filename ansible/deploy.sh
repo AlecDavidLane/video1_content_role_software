@@ -36,6 +36,9 @@ if [ ! -f "$HOME/.ssh/id_ed25519" ] && [ ! -f "$HOME/.ssh/id_rsa" ]; then
   ssh-keygen -t ed25519 -N "" -f "$HOME/.ssh/id_ed25519"
 fi
 echo "==> Installing SSH key on $SSH_USER@$HOST (enter the target user's password once)"
+# A re-imaged target gets a new host identity; drop any stale known_hosts
+# entry so the workflow survives wipe-and-redeploy on the same IP.
+ssh-keygen -R "$HOST" >/dev/null 2>&1 || true
 ssh-copy-id -o StrictHostKeyChecking=accept-new "$SSH_USER@$HOST"
 
 INVENTORY="$(mktemp)"
