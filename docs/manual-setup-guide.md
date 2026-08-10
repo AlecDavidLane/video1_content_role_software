@@ -153,8 +153,11 @@ guided test, with the appliance as the system of record.
 ### 3.1 Install OpenAVC
 
 ```bash
-curl -sSL https://get.openavc.com | bash
+curl -sSL https://get.openavc.com | sudo bash
 ```
+
+(`sudo` goes on the `bash` side of the pipe — the script must *run* as
+root, not just download as root.)
 
 Serves on port 8080 (the TL appliance runs on 8808 so they coexist).
 First visit to `http://<machine-ip>:8080` claims the install — set the
