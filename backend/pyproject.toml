@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tl-commissioning-source"
-version = "0.1.21"
+version = "0.1.22"
 description = "Transition Layer portable AV commissioning test source"
 readme = "README.md"
 requires-python = ">=3.11"

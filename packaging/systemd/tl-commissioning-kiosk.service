@@ -16,11 +16,12 @@ Type=simple
 # page connects first try (FR-07 holding screen shows immediately after).
 # Note: /health reports 503 until this kiosk connects, so only reachability
 # is checked here, not health.
-ExecStartPre=/bin/sh -c 'until curl -s -o /dev/null http://127.0.0.1:8808/health || [ $SECONDS -gt 45 ]; do sleep 1; done; exit 0'
+# POSIX sh: no $SECONDS (a bashism that made this wait forever on dash).
+ExecStartPre=/bin/sh -c 'i=0; until curl -s -o /dev/null http://127.0.0.1:8808/health || [ "$i" -ge 45 ]; do i=$((i+1)); sleep 1; done; exit 0'
 # At boot the unit can win the race against the window manager, in which
 # case --kiosk silently degrades to a normal window. Wait for the shell,
 # then settle briefly before launching.
-ExecStartPre=/bin/sh -c 'until pgrep -x gnome-shell >/dev/null || [ $SECONDS -gt 30 ]; do sleep 1; done; sleep 3'
+ExecStartPre=/bin/sh -c 'i=0; until pgrep -x gnome-shell >/dev/null || [ "$i" -ge 30 ]; do i=$((i+1)); sleep 1; done; sleep 3'
 # Let the backend service (user tl-source) drive xrandr on this session's
 # X server for output-mode control (FR-11..14).
 ExecStartPre=-/usr/bin/xhost +SI:localuser:tl-source

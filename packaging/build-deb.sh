@@ -138,7 +138,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: python3 (>= 3.11), python3-venv, chromium-browser | chromium, xserver-xorg-core, x11-xserver-utils, wmctrl, pulseaudio-utils | pipewire-pulse, libnss3, libnspr4, libexpat1, libfontconfig1, libglib2.0-0t64 | libglib2.0-0
+Depends: python3 (>= 3.11), python3-venv, chromium-browser | chromium, curl, xserver-xorg-core, x11-xserver-utils, wmctrl, pulseaudio-utils | pipewire-pulse, libnss3, libnspr4, libexpat1, libfontconfig1, libglib2.0-0t64 | libglib2.0-0
 Maintainer: Transition Layer <ops@transitionlayer.invalid>
 Description: Portable AV commissioning test source
  Turns a mini-PC into a guided HDMI test source with a phone control
