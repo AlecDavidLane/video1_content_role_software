@@ -33,5 +33,6 @@
     "clear_confirm": "¿Eliminar todas las respuestas guardadas? Esta acción no se puede deshacer.",
     "restart_app": "Reiniciar quiosco",
     "back_to_kiosk": "Volver al quiosco"
-  }
+  },
+  "robot_bubble": "Cuéntame qué te ha parecido"
 }

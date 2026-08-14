@@ -32,5 +32,6 @@
     "clear_confirm": "Delete every stored response? This cannot be undone.",
     "restart_app": "Restart kiosk",
     "back_to_kiosk": "Back to kiosk"
-  }
+  },
+  "robot_bubble": "Tell me what you think"
 }
