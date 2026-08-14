@@ -1,0 +1,14 @@
+{
+  "_note": "V2 template - replace event name, colours and assets with the customer pack (brief §5). Assets deploy to /opt/feedback-kiosk/brand-assets/ and are referenced by URL path.",
+  "event": { "id": "demo-expo-2026", "name": "Demo Expo 2026", "subtitle": "How was your visit?", "venue": "Hall 3" },
+  "locale": "en-GB",
+  "branding": { "logo": "/brand/logo.png", "background": "/brand/background.jpg", "accent": "#e91e63", "sponsor_mark": "/brand/sponsor.png", "credits_on_public_screen": false },
+  "copy_overrides": {
+    "idle_hint": "Leave your impressions of Demo Expo - the robot paints them",
+    "thank_you": "Thanks for visiting Demo Expo 2026!"
+  },
+  "timeouts": { "idle_seconds": 90, "result_seconds": 25, "input_seconds": 120 },
+  "privacy": { "store_text": true },
+  "voice": { "enabled": false },
+  "config_version": "demo-expo-2026-1"
+}

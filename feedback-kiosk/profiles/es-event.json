@@ -1,0 +1,11 @@
+{
+  "_note": "V3 - complete es-ES visitor journey: locale switches strings file, keyboard layout and emotion handling (Spanish lexicon + multilingual model). All copy pending fluent review (brief §5).",
+  "event": { "id": "evento-es-2026", "name": "Artista de Opiniones", "subtitle": "Cuéntale al robot cómo te has sentido", "venue": "" },
+  "locale": "es-ES",
+  "branding": { "logo": "/transition-layer-logo.png", "background": "", "accent": "#ff9800", "sponsor_mark": "", "credits_on_public_screen": false },
+  "copy_overrides": {},
+  "timeouts": { "idle_seconds": 90, "result_seconds": 25, "input_seconds": 120 },
+  "privacy": { "store_text": true },
+  "voice": { "enabled": false },
+  "config_version": "evento-es-2026-1"
+}

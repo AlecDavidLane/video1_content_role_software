@@ -1,0 +1,10 @@
+{
+  "event": { "id": "v1-generic", "name": "Feedback Artist", "subtitle": "Tell the robot how it felt", "venue": "" },
+  "locale": "en-GB",
+  "branding": { "logo": "/transition-layer-logo.png", "background": "", "accent": "#00d4aa", "sponsor_mark": "", "credits_on_public_screen": false },
+  "copy_overrides": {},
+  "timeouts": { "idle_seconds": 90, "result_seconds": 25, "input_seconds": 120 },
+  "privacy": { "store_text": true },
+  "voice": { "enabled": false },
+  "config_version": "v1-generic-1"
+}
