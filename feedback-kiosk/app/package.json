@@ -1,0 +1,19 @@
+{
+  "name": "feedback-kiosk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Feedback Artist event kiosk - offline touchscreen appliance",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "fetch-models": "node scripts/fetch-models.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.5.1",
+    "better-sqlite3": "11.10.0",
+    "next": "16.0.7",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
+  }
+}

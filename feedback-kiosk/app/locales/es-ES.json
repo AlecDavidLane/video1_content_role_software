@@ -1,0 +1,37 @@
+{
+  "_review": "PENDING NATIVE REVIEW - all visitor-facing strings must be approved by a fluent Spanish reviewer before a public event (brief §5).",
+  "start_button": "Toca para empezar",
+  "idle_hint": "Deja un pensamiento y el robot lo convierte en arte",
+  "input_title": "¿Qué te ha parecido?",
+  "input_placeholder": "Escribe unas palabras sobre cómo te sientes…",
+  "submit_button": "¡Píntalo!",
+  "cancel_button": "Empezar de nuevo",
+  "processing_lines": [
+    "Leyendo tus palabras…",
+    "Sintiendo el ánimo…",
+    "Mezclando los colores…"
+  ],
+  "result_title": "Aquí tienes tu obra",
+  "thank_you": "Gracias por compartir. ¡Disfruta del evento!",
+  "privacy_notice": "Tus palabras se guardan de forma anónima para ayudarnos a entender cómo se sintieron los visitantes. Sin nombres ni datos de contacto.",
+  "privacy_notice_totals_only": "No se guarda nada de lo que escribes, solo un recuento anónimo de estados de ánimo.",
+  "input_empty_nudge": "Escribe unas palabras primero",
+  "new_visitor_button": "Siguiente visitante",
+  "emotion_labels": {
+    "joy": "alegría",
+    "calm": "calma",
+    "sad": "tristeza",
+    "angry": "enfado",
+    "surprised": "sorpresa"
+  },
+  "operator": {
+    "pin_prompt": "PIN de operador",
+    "status_title": "Estado del quiosco",
+    "export_csv": "Exportar CSV",
+    "export_json": "Exportar JSON",
+    "clear_data": "Borrar todos los comentarios",
+    "clear_confirm": "¿Eliminar todas las respuestas guardadas? Esta acción no se puede deshacer.",
+    "restart_app": "Reiniciar quiosco",
+    "back_to_kiosk": "Volver al quiosco"
+  }
+}

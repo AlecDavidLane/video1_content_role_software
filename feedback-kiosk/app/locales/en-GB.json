@@ -1,0 +1,36 @@
+{
+  "start_button": "Touch to begin",
+  "idle_hint": "Leave a thought — the robot turns it into art",
+  "input_title": "How was it for you?",
+  "input_placeholder": "Type a few words about how you feel…",
+  "submit_button": "Paint it!",
+  "cancel_button": "Start again",
+  "processing_lines": [
+    "Reading your words…",
+    "Feeling the mood…",
+    "Mixing the colours…"
+  ],
+  "result_title": "Here's your artwork",
+  "thank_you": "Thank you for sharing — enjoy the event!",
+  "privacy_notice": "Your words are stored anonymously to help us understand how visitors felt. No names, no contact details.",
+  "privacy_notice_totals_only": "Nothing you type is stored — only an anonymous count of moods.",
+  "input_empty_nudge": "Type a few words first",
+  "new_visitor_button": "Next visitor",
+  "emotion_labels": {
+    "joy": "joy",
+    "calm": "calm",
+    "sad": "sad",
+    "angry": "angry",
+    "surprised": "surprised"
+  },
+  "operator": {
+    "pin_prompt": "Operator PIN",
+    "status_title": "Kiosk status",
+    "export_csv": "Export CSV",
+    "export_json": "Export JSON",
+    "clear_data": "Clear all feedback",
+    "clear_confirm": "Delete every stored response? This cannot be undone.",
+    "restart_app": "Restart kiosk",
+    "back_to_kiosk": "Back to kiosk"
+  }
+}

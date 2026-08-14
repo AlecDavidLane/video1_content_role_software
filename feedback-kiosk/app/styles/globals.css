@@ -1,0 +1,47 @@
+/* Feedback Artist kiosk - global lockdown and base styles.
+ * Fonts: system stack only, so the appliance is offline by
+ * construction (brief §7 - no Google Fonts, no CDN). */
+:root {
+  --accent: #00d4aa;
+  --bg: #0a0e12;
+  --surface: #151b22;
+  --text: #f2f5f7;
+  --text-dim: #9aa4ad;
+  --touch-min: 60px; /* brief §4: 56-64px touch targets */
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #__next {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation; /* no double-tap zoom */
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+    "Liberation Sans", sans-serif;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+button {
+  font-family: inherit;
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+}
