@@ -125,7 +125,9 @@
     owner: "{{ fk_service_user }}"
     group: "{{ fk_service_user }}"
     mode: "0640"
-  notify: restart feedback-kiosk app
+  notify:
+    - restart feedback-kiosk app
+    - reload kiosk browser
 
 - name: Brand assets for this profile
   ansible.builtin.copy:
@@ -133,7 +135,9 @@
     dest: "/opt/feedback-kiosk/brand-assets/{{ fk_profile }}/"
     mode: "0644"
   when: fk_brand_assets_src | length > 0
-  notify: restart feedback-kiosk app
+  notify:
+    - restart feedback-kiosk app
+    - reload kiosk browser
 
 - name: Link brand assets into the release's public dir
   ansible.builtin.file:
@@ -259,6 +263,14 @@
       'health': fk_health.json | default({}),
       'previous_release': fk_previous_release,
     } | to_nice_json }}"
+
+# First install only: reboot into autologin + the kiosk session.
+# Profile switches and updates never reboot - the app restart plus the
+# browser reload handler cover them.
+- name: Reboot into the kiosk (first install)
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: fk_previous_release | length == 0
 
 - name: Update last-deployment pointer (read by health/status consumers)
   ansible.builtin.copy:

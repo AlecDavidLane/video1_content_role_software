@@ -26,7 +26,9 @@ ExecStart=/usr/bin/chromium-browser \
     --check-for-update-interval=31536000 \
     --user-data-dir=%h/fk-kiosk-profile \
     --app=http://127.0.0.1:{{ fk_app_port }}/
-ExecStartPost=/bin/sh -c 'for i in $(seq 1 30); do sleep 1; wmctrl -r "Feedback" -b add,fullscreen && exit 0; done; exit 0'
+# Match by window class, not title - the title is the event name and
+# changes per profile.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 30); do sleep 1; wmctrl -x -r chromium -b add,fullscreen && exit 0; done; exit 0'
 Restart=always
 RestartSec=2
 
