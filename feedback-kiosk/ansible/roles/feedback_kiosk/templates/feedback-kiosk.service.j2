@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Feedback Artist kiosk application
+After=network.target
+
+[Service]
+Type=simple
+User={{ fk_service_user }}
+Group={{ fk_service_user }}
+WorkingDirectory=/opt/feedback-kiosk/current
+Environment=NODE_ENV=production
+Environment=PORT={{ fk_app_port }}
+Environment=HOSTNAME=127.0.0.1
+Environment=FEEDBACK_KIOSK_CONFIG=/etc/feedback-kiosk/config.json
+ExecStart=/usr/bin/node /opt/feedback-kiosk/current/server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/feedback-kiosk /var/log/feedback-kiosk
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

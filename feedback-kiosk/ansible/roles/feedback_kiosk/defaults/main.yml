@@ -1,0 +1,37 @@
+---
+# feedback_kiosk role - safe defaults. One role; V1/branded/Spanish are
+# variable profiles (see ../../profiles/*.yml).
+
+# Path ON THE CONTROLLER to the release tarball built by
+# packaging/build-release.sh. Required.
+fk_release_src: ""
+# Expected sha256 of the tarball (contents of the .sha256 file's hash
+# field). Required - the role refuses an unchecksummed release.
+fk_release_sha256: ""
+
+# Which event profile to deploy: file at ../../profiles/<name>.json
+# (standard|branded|spanish map to v1|branded-event|es-event).
+fk_profile: standard
+
+# Directory ON THE CONTROLLER with brand assets for this profile
+# (copied to /opt/feedback-kiosk/brand-assets/<profile>/ and served at
+# /brand/*). Empty = none.
+fk_brand_assets_src: ""
+
+# Operator PIN (vault this). Empty = operator screen disabled.
+fk_operator_pin: ""
+
+# Kiosk desktop user (autologin) and app service user.
+fk_kiosk_user: kiosk
+fk_service_user: feedback-kiosk
+fk_app_port: 3000
+fk_manage_autologin: true
+fk_manage_dconf: true
+
+# Node.js major version (NodeSource). Next 16 needs >= 20.
+fk_node_major: 20
+
+fk_profile_map:
+  standard: v1
+  branded: branded-event
+  spanish: es-event

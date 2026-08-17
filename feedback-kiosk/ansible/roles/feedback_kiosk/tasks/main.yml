@@ -1,0 +1,272 @@
+---
+# One idempotent pass: preflight -> packages -> release -> config ->
+# services -> health-gated atomic activation with rollback (brief §8/§9).
+
+# ---------- preflight -------------------------------------------------------
+- name: Preflight - supported OS and inputs
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Ubuntu'
+      - ansible_distribution_version is version('24.04', '>=')
+      - ansible_architecture == 'x86_64'
+      - fk_release_src | length > 0
+      - fk_release_sha256 | length > 0
+      - fk_profile in fk_profile_map
+    fail_msg: >-
+      Preflight failed: need Ubuntu 24.04+ x86_64, fk_release_src,
+      fk_release_sha256 and an approved fk_profile
+      ({{ fk_profile_map.keys() | join('/') }}).
+
+- name: Preflight - free disk space (>= 2 GB on /)
+  ansible.builtin.assert:
+    that: >-
+      (ansible_mounts | selectattr('mount', 'equalto', '/') | first).size_available > 2147483648
+    fail_msg: "Less than 2 GB free on /"
+
+# ---------- users and directories ------------------------------------------
+- name: Service user (app) and kiosk user (desktop session)
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    system: "{{ item.system }}"
+    shell: "{{ item.shell }}"
+    password: "!"
+  loop:
+    - { name: "{{ fk_service_user }}", system: true, shell: /usr/sbin/nologin }
+    - { name: "{{ fk_kiosk_user }}", system: false, shell: /bin/bash }
+
+- name: Directory layout (brief §8)
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(fk_service_user) }}"
+    group: "{{ item.owner | default(fk_service_user) }}"
+    mode: "0755"
+  loop:
+    - { path: /opt/feedback-kiosk/releases, owner: root }
+    - { path: /opt/feedback-kiosk/brand-assets, owner: root }
+    - { path: /etc/feedback-kiosk }
+    - { path: /var/lib/feedback-kiosk }
+    - { path: /var/log/feedback-kiosk }
+
+# ---------- packages ---------------------------------------------------------
+- name: Base packages (curl first - fresh Ubuntu lacks it)
+  ansible.builtin.apt:
+    name: [curl, ca-certificates, gnupg, chromium-browser, wmctrl, x11-xserver-utils, sqlite3]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: NodeSource key
+  ansible.builtin.get_url:
+    url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    dest: /etc/apt/keyrings/nodesource.asc
+    mode: "0644"
+
+- name: NodeSource repo (pinned major {{ fk_node_major }})
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/nodesource.asc] https://deb.nodesource.com/node_{{ fk_node_major }}.x nodistro main"
+    filename: nodesource
+
+- name: Node.js
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: true
+
+# ---------- release deployment (immutable, checksummed) ---------------------
+- name: Copy release tarball
+  ansible.builtin.copy:
+    src: "{{ fk_release_src }}"
+    dest: /opt/feedback-kiosk/release-incoming.tar.gz
+    mode: "0644"
+  register: fk_tarball
+
+- name: Verify release checksum
+  ansible.builtin.stat:
+    path: /opt/feedback-kiosk/release-incoming.tar.gz
+    checksum_algorithm: sha256
+  register: fk_tar_stat
+  failed_when: fk_tar_stat.stat.checksum != fk_release_sha256
+
+- name: Read release version from tarball
+  ansible.builtin.shell: |
+    set -o pipefail
+    tar tzf /opt/feedback-kiosk/release-incoming.tar.gz | head -1 | cut -d/ -f1
+  args: { executable: /bin/bash }
+  register: fk_relname
+  changed_when: false
+
+- name: Extract release to versioned directory
+  ansible.builtin.unarchive:
+    src: /opt/feedback-kiosk/release-incoming.tar.gz
+    dest: /opt/feedback-kiosk/releases/
+    remote_src: true
+    creates: "/opt/feedback-kiosk/releases/{{ fk_relname.stdout }}/RELEASE"
+
+- name: Remember current release (for rollback)
+  ansible.builtin.stat:
+    path: /opt/feedback-kiosk/current
+  register: fk_current_link
+
+- name: Record previous release target
+  ansible.builtin.set_fact:
+    fk_previous_release: "{{ fk_current_link.stat.lnk_target | default('') }}"
+    fk_new_release: "/opt/feedback-kiosk/releases/{{ fk_relname.stdout }}"
+
+# ---------- configuration, assets, translations ------------------------------
+- name: Load profile JSON from the repo (controller side)
+  ansible.builtin.set_fact:
+    fk_config_json: "{{ lookup('file', playbook_dir + '/../profiles/' + fk_profile_map[fk_profile] + '.json') | from_json }}"
+
+- name: Event profile configuration
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: /etc/feedback-kiosk/config.json
+    owner: "{{ fk_service_user }}"
+    group: "{{ fk_service_user }}"
+    mode: "0640"
+  notify: restart feedback-kiosk app
+
+- name: Brand assets for this profile
+  ansible.builtin.copy:
+    src: "{{ fk_brand_assets_src }}/"
+    dest: "/opt/feedback-kiosk/brand-assets/{{ fk_profile }}/"
+    mode: "0644"
+  when: fk_brand_assets_src | length > 0
+  notify: restart feedback-kiosk app
+
+- name: Link brand assets into the release's public dir
+  ansible.builtin.file:
+    src: "/opt/feedback-kiosk/brand-assets/{{ fk_profile }}"
+    dest: "{{ fk_new_release }}/public/brand"
+    state: link
+    force: true
+  when: fk_brand_assets_src | length > 0
+
+# ---------- services ----------------------------------------------------------
+- name: Application service
+  ansible.builtin.template:
+    src: feedback-kiosk.service.j2
+    dest: /usr/lib/systemd/system/feedback-kiosk.service
+    mode: "0644"
+  notify: restart feedback-kiosk app
+
+- name: Kiosk browser session (user unit)
+  ansible.builtin.template:
+    src: feedback-kiosk-session.service.j2
+    dest: /usr/lib/systemd/user/feedback-kiosk-session.service
+    mode: "0644"
+
+- name: Enable kiosk session for desktop logins
+  ansible.builtin.command: systemctl --global enable feedback-kiosk-session.service
+  args:
+    creates: /etc/systemd/user/graphical-session.target.wants/feedback-kiosk-session.service
+
+- name: GDM autologin on Xorg
+  ansible.builtin.template:
+    src: gdm-custom.conf.j2
+    dest: /etc/gdm3/custom.conf
+    mode: "0644"
+    backup: true
+  when: fk_manage_autologin
+
+- name: dconf directories (absent on a fresh install)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: [/etc/dconf/profile, /etc/dconf/db/local.d]
+  when: fk_manage_dconf
+
+- name: dconf - never blank/lock/sleep
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    content: "{{ item.content }}"
+    mode: "0644"
+  loop:
+    - dest: /etc/dconf/profile/user
+      content: "user-db:user\nsystem-db:local\n"
+    - dest: /etc/dconf/db/local.d/00-feedback-kiosk
+      content: |
+        [org/gnome/desktop/session]
+        idle-delay=uint32 0
+        [org/gnome/desktop/screensaver]
+        lock-enabled=false
+        [org/gnome/settings-daemon/plugins/power]
+        sleep-inactive-ac-type='nothing'
+  when: fk_manage_dconf
+  notify: dconf update
+
+# ---------- atomic activation + health gate + rollback ------------------------
+- name: Activate release (atomic symlink)
+  ansible.builtin.file:
+    src: "{{ fk_new_release }}"
+    dest: /opt/feedback-kiosk/current
+    state: link
+    force: true
+
+- name: Restart application on the new release
+  ansible.builtin.systemd:
+    name: feedback-kiosk
+    state: restarted
+    enabled: true
+    daemon_reload: true
+
+- name: Health check the new release
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ fk_app_port }}/api/health"
+    status_code: 200
+  register: fk_health
+  retries: 12
+  delay: 5
+  until: fk_health.status == 200
+  ignore_errors: true
+
+- name: Roll back to previous release on failed health
+  when: fk_health is failed and fk_previous_release | length > 0
+  block:
+    - name: Restore previous symlink
+      ansible.builtin.file:
+        src: "{{ fk_previous_release }}"
+        dest: /opt/feedback-kiosk/current
+        state: link
+        force: true
+    - name: Restart application on previous release
+      ansible.builtin.systemd:
+        name: feedback-kiosk
+        state: restarted
+
+- name: Fail the play when validation failed
+  ansible.builtin.fail:
+    msg: >-
+      Release {{ fk_relname.stdout }} failed its health check
+      {{ '- rolled back to ' + fk_previous_release if fk_previous_release else '- no previous release to roll back to' }}.
+  when: fk_health is failed
+
+# ---------- deployment record (brief §8) --------------------------------------
+- name: Write deployment record
+  ansible.builtin.copy:
+    dest: /var/log/feedback-kiosk/deploy-{{ ansible_date_time.iso8601_basic_short }}.json
+    mode: "0644"
+    content: "{{ {
+      'release': fk_relname.stdout,
+      'sha256': fk_release_sha256,
+      'profile': fk_profile,
+      'config_version': fk_config_json.config_version,
+      'host': inventory_hostname,
+      'machine_id': ansible_machine_id | default(''),
+      'deployed_at': ansible_date_time.iso8601,
+      'health': fk_health.json | default({}),
+      'previous_release': fk_previous_release,
+    } | to_nice_json }}"
+
+- name: Update last-deployment pointer (read by health/status consumers)
+  ansible.builtin.copy:
+    dest: /var/lib/feedback-kiosk/last-deploy.json
+    owner: "{{ fk_service_user }}"
+    mode: "0644"
+    content: "{{ {
+      'release': fk_relname.stdout,
+      'profile': fk_profile,
+      'deployed_at': ansible_date_time.iso8601,
+    } | to_nice_json }}"

@@ -1,0 +1,14 @@
+---
+# Deploy the Feedback Artist kiosk. Driven by deploy-kiosk (the
+# natural-language layer's only entry point) or directly:
+#
+#   ansible-playbook -i inventory.ini deploy.yml \
+#     -e @profiles/standard.yml \
+#     -e fk_release_src=.../feedback-kiosk-0.1.0.tar.gz \
+#     -e fk_release_sha256=<hash> \
+#     -e fk_targets=event_kiosks
+
+- hosts: "{{ fk_targets | default('event_kiosks') }}"
+  become: true
+  roles:
+    - role: feedback_kiosk

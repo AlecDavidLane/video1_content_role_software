@@ -77,6 +77,24 @@ discarded per brief §2/§4.
   `profiles/spanish.yml` — same role, different variables. Feedback DB
   and browser profile are never touched by updates.
 
+## Addendum: natural-language remote deployment
+
+Owner-confirmed scope: **WhatsApp (Twilio)** carries the messages; a
+**dedicated control machine** runs Node-RED + OpenCode + the Ansible
+controller; **one kiosk** is filmed (tooling is count-agnostic).
+
+Chain: WhatsApp → Twilio webhook → Node-RED (authorised-number check)
+→ OpenCode (intent interpretation ONLY, restricted JSON out) → schema +
+allowlist validation → CONFIRM round-trip → `deploy-kiosk --profile
+<standard|branded|spanish> --targets <group>` → structured JSON progress
+→ completion/failure reply. Raw message text NEVER reaches a shell:
+OpenCode's output is parsed as JSON and every field is validated against
+enums before the fixed-argv command runs. Secrets (Twilio, vault, PINs)
+live outside the flow; every request lands in an append-only audit log
+that the branded terminal monitor tails for filming. Profile name
+mapping: `standard`→v1.json, `branded`→branded-event.json,
+`spanish`→es-event.json.
+
 ## Repo layout
 
 ```

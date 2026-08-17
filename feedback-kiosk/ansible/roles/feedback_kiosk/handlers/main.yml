@@ -1,0 +1,10 @@
+---
+- name: restart feedback-kiosk app
+  ansible.builtin.systemd:
+    name: feedback-kiosk
+    state: restarted
+    daemon_reload: true
+
+- name: dconf update
+  ansible.builtin.command: dconf update
+  changed_when: true

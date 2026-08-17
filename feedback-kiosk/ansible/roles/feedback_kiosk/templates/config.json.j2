@@ -1,0 +1,10 @@
+{# Profile JSON from the repo + machine-side values (PIN hash, storage). #}
+{% set pin_salt = (inventory_hostname + fk_profile) | hash('sha256') | truncate(32, true, '') %}
+{% set operator = {
+  'pin_hash': ((pin_salt + ':' + fk_operator_pin) | hash('sha256')) if fk_operator_pin else '',
+  'pin_salt': pin_salt if fk_operator_pin else ''
+} %}
+{{ fk_config_json
+   | combine({'operator': operator,
+              'storage': {'db_path': '/var/lib/feedback-kiosk/feedback.db'}})
+   | to_nice_json }}

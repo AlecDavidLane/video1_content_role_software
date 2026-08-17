@@ -1,0 +1,34 @@
+# {{ ansible_managed }}
+# Chromium kiosk session for the Feedback Artist. Carries every lesson
+# from the TL test-source kiosk: wait loops in POSIX sh (no $SECONDS),
+# curl guaranteed by the role's packages, pkill of profile survivors
+# (prevents the forwarded-window restart loop), wmctrl fullscreen
+# enforcement against the boot race, and xset blanking off.
+[Unit]
+Description=Feedback Artist kiosk browser
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sh -c 'i=0; until curl -s -o /dev/null http://127.0.0.1:{{ fk_app_port }}/api/health || [ "$i" -ge 45 ]; do i=$((i+1)); sleep 1; done; exit 0'
+ExecStartPre=/bin/sh -c 'i=0; until pgrep -x gnome-shell >/dev/null || [ "$i" -ge 30 ]; do i=$((i+1)); sleep 1; done; sleep 3'
+ExecStartPre=-/usr/bin/pkill -f fk-kiosk-profile
+ExecStartPre=-/usr/bin/xset s off -dpms
+ExecStart=/usr/bin/chromium-browser \
+    --kiosk \
+    --start-fullscreen \
+    --no-first-run \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-features=TranslateUI \
+    --check-for-update-interval=31536000 \
+    --user-data-dir=%h/fk-kiosk-profile \
+    --app=http://127.0.0.1:{{ fk_app_port }}/
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 30); do sleep 1; wmctrl -r "Feedback" -b add,fullscreen && exit 0; done; exit 0'
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
