@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Branded terminal deployment monitor (brief addendum) - the filming
+view. Pipe deploy-kiosk into it, or run alongside Node-RED with
+--follow to tail the audit log for message/intent events:
+
+  deploy-kiosk --profile branded | deploy-monitor
+  deploy-monitor --follow            # watches the audit log too
+"""
+import json
+import os
+import sys
+import time
+
+ACCENT = "\033[38;2;0;212;170m"   # Transition Layer teal
+DIM = "\033[2m"
+BOLD = "\033[1m"
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+RESET = "\033[0m"
+AUDIT_LOG = os.environ.get("FK_AUDIT_LOG", "/var/log/feedback-kiosk-control/audit.jsonl")
+
+def banner():
+    print(f"{ACCENT}{BOLD}")
+    print("  ─────────────────────────────────────────────")
+    print("   TRANSITION LAYER · KIOSK DEPLOYMENT MONITOR")
+    print(f"  ─────────────────────────────────────────────{RESET}")
+
+def line(tag, text, colour=ACCENT):
+    stamp = time.strftime("%H:%M:%S")
+    print(f"{DIM}{stamp}{RESET}  {colour}{BOLD}{tag:<12}{RESET} {text}", flush=True)
+
+def show(evt):
+    e = evt.get("event") or evt.get("status")
+    if e == "message_received":
+        line("MESSAGE", f"“{evt.get('text', '')}” from {evt.get('sender', 'unknown')}")
+    elif e == "intent":
+        line("INTENT", f"{evt.get('reason', '')} (action={evt.get('action')}, profile={evt.get('profile')})")
+    elif e == "confirmation":
+        line("CONFIRM", evt.get("detail", "awaiting confirmation"), YELLOW)
+    elif e == "run_started" or e == "started":
+        line("DEPLOY", f"profile={evt.get('profile')} targets={evt.get('targets')} release={evt.get('release', '')}")
+    elif e == "task":
+        line("  task", evt.get("name", ""), DIM)
+    elif e == "host_result":
+        ok = evt.get("failed", 0) == 0 and evt.get("unreachable", 0) == 0
+        colour = GREEN if ok else RED
+        line("KIOSK", f"{evt.get('host')}: ok={evt.get('ok')} changed={evt.get('changed')} failed={evt.get('failed')}", colour)
+    elif e == "run_finished" or e in ("success", "failed"):
+        ok = evt.get("ok", e == "success")
+        colour = GREEN if ok else RED
+        n, total = evt.get("hosts_succeeded", "?"), evt.get("hosts_total", "?")
+        line("RESULT", f"{'DEPLOYMENT COMPLETE' if ok else 'DEPLOYMENT FAILED (rolled back)'} - {n} of {total} kiosks healthy", colour)
+    elif e == "warning":
+        line("WARN", evt.get("detail", ""), YELLOW)
+
+def main():
+    banner()
+    if "--follow" in sys.argv:
+        # Tail the audit log (Node-RED writes message/intent events there too).
+        with open(AUDIT_LOG, "r", encoding="utf-8") as fh:
+            fh.seek(0, 2)
+            while True:
+                where = fh.tell()
+                l = fh.readline()
+                if not l:
+                    time.sleep(0.3)
+                    fh.seek(where)
+                    continue
+                try:
+                    show(json.loads(l))
+                except json.JSONDecodeError:
+                    pass
+    else:
+        for l in sys.stdin:
+            try:
+                show(json.loads(l))
+            except json.JSONDecodeError:
+                pass
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
