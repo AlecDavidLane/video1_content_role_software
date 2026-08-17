@@ -12,9 +12,8 @@ functional test (~10 minutes), then the full kiosk appliance setup.
 > tl-commissioning-backend`.
 
 > **Supported OS:** the reference target is **Ubuntu 24.04 LTS**
-> (Python 3.12) — use that for production appliances and the recorded
-> role; `packaging/requirements.lock` is pinned against it. On a newer
-> Ubuntu release, `build-deb.sh` detects when a reference pin has no
+> (Python 3.12). `packaging/requirements.lock` is pinned against it. On a
+> newer Ubuntu release, `build-deb.sh` detects when a reference pin has no
 > binary wheel for that Python and automatically re-resolves a pin set
 > for the build host (printed during the build and bundled in the deb),
 > so the package still installs fully pinned. The appliance never
@@ -39,8 +38,8 @@ sudo apt install -y git python3-pip python3-venv nodejs npm chromium-browser cur
 ### 2. Clone and build the package
 
 ```bash
-git clone https://github.com/AlecDavidLane/video1_content_role_software.git
-cd video1_content_role_software
+git clone https://github.com/AlecDavidLane/transition-layer-commissioning-source.git
+cd transition-layer-commissioning-source
 packaging/build-deb.sh
 ```
 
@@ -64,8 +63,7 @@ upgrade) and enables + starts the backend service.
 
 ### 4. Initialise the appliance
 
-This is exactly what the Ansible role does later — identity, branding
-and PIN with no UI interaction:
+Set the appliance identity, branding and control PIN without UI interaction:
 
 ```bash
 sudo -u tl-source /opt/transition-layer/commissioning-source/venv/bin/tl-source \
@@ -141,10 +139,6 @@ sudo -u kiosk dbus-launch gsettings set org.gnome.desktop.session idle-delay 0
 sudo -u kiosk dbus-launch gsettings set org.gnome.desktop.screensaver lock-enabled false
 sudo -u kiosk dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
 ```
-
-> Deploying a fleet? The Ansible role in `ansible/` does all of Stage 1
-> and Stage 2 (install, configure, autologin, kiosk, validation) in one
-> play — see `ansible/README.md`.
 
 Reboot. The HDMI output comes up black (holding screen), then shows
 **Identify** once the backend is ready — no cursor, no desktop chrome —
