@@ -1,43 +1,47 @@
 [
-  { "id": "fk_tab", "type": "tab", "label": "Kiosk NL Deploy", "disabled": false },
+  { "id": "fk_tab", "type": "tab", "label": "Kiosk NL Deploy (Telegram)", "disabled": false },
 
-  { "id": "fk_in", "type": "http in", "z": "fk_tab", "name": "Twilio WhatsApp webhook",
-    "url": "/whatsapp", "method": "post", "upload": false, "swaggerDoc": "",
-    "x": 140, "y": 120, "wires": [["fk_gate"]] },
+  { "id": "fk_bot", "type": "telegram bot", "botname": "kiosk-bot",
+    "usernames": "", "chatids": "", "baseapiurl": "", "testenvironment": false,
+    "updatemode": "polling", "pollinterval": "300", "usesocks": false,
+    "sockshost": "", "socksprotocol": "socks5", "socksport": "6667",
+    "socksusername": "anonymous", "sockspassword": "", "bothost": "",
+    "botpath": "", "localbotport": "8443", "publicbotport": "8443",
+    "privatekey": "", "certificate": "", "useselfsignedcertificate": false,
+    "sslterminated": false, "verboselogging": false },
+
+  { "id": "fk_rx", "type": "telegram receiver", "z": "fk_tab", "name": "Telegram in",
+    "bot": "fk_bot", "saveDataDir": "", "filterCommands": false,
+    "x": 130, "y": 120, "wires": [["fk_gate"], []] },
 
   { "id": "fk_gate", "type": "function", "z": "fk_tab", "name": "authorise + route",
-    "func": "const from = (msg.payload.From || '').trim();\nconst body = (msg.payload.Body || '').trim();\nconst allowed = (env.get('AUTHORIZED_NUMBERS') || '').split(',').map(s => s.trim()).filter(Boolean);\nconst sender = from.replace(/^whatsapp:/, '');\nmsg.sender = sender;\nmsg.text = body;\n\nfunction twiml(text) {\n    return `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Message>${text}</Message></Response>`;\n}\nmsg.twiml = twiml;\n\nif (!allowed.includes(sender)) {\n    node.warn(`unauthorised sender: ${sender}`);\n    msg.statusCode = 200;\n    msg.payload = twiml('Sorry, this number is not authorised to control the kiosks.');\n    return [null, msg, null];\n}\n\nconst pending = flow.get('pending');\nconst fresh = pending && (Date.now() - pending.ts) < 300000;\nif (/^confirm$/i.test(body)) {\n    if (fresh) {\n        flow.set('pending', null);\n        flow.set('last_sender', sender);\n        msg.profile = pending.profile;\n        msg.payload = twiml(`Deploying the ${pending.label} profile now - you will get a message when it is done.`);\n        return [null, msg, msg];\n    }\n    msg.payload = twiml('Nothing is waiting for confirmation.');\n    return [null, msg, null];\n}\n\n// base64 for the shell boundary: raw text never reaches a command line\nmsg.payload = Buffer.from(msg.sender).toString('base64') + ' ' + Buffer.from(body).toString('base64');\nreturn [msg, null, null];",
-    "outputs": 3, "noerr": 0, "x": 350, "y": 120,
-    "wires": [["fk_intent"], ["fk_resp"], ["fk_deploycmd"]] },
+    "func": "const chatId = msg.payload.chatId;\nconst senderId = String((msg.originalMessage && msg.originalMessage.from && msg.originalMessage.from.id) || chatId);\nconst body = String(msg.payload.content || '').trim();\nconst allowed = (env.get('AUTHORIZED_TELEGRAM_IDS') || '').split(',').map(s => s.trim()).filter(Boolean);\n\nfunction reply(text) {\n    return { payload: { chatId: chatId, type: 'message', content: text } };\n}\n\nif (!allowed.includes(senderId)) {\n    node.warn(`unauthorised sender: ${senderId}`);\n    return [null, reply(`Sorry, this account is not authorised to control the kiosks. (Your Telegram id is ${senderId} - add it to AUTHORIZED_TELEGRAM_IDS if this is you.)`), null];\n}\n\nflow.set('last_chat', chatId);\nconst pending = flow.get('pending');\nconst fresh = pending && (Date.now() - pending.ts) < 300000;\n\nif (/^confirm$/i.test(body)) {\n    if (fresh) {\n        flow.set('pending', null);\n        msg.profile = pending.profile;\n        const out = reply(`Deploying the ${pending.label} profile now - you will get a message when it is done.`);\n        msg.ack = out.payload;\n        return [null, out, msg];\n    }\n    return [null, reply('Nothing is waiting for confirmation.'), null];\n}\n\n// base64 for the shell boundary: raw text never reaches a command line\nmsg.chatId = chatId;\nmsg.payload = Buffer.from(senderId).toString('base64') + ' ' + Buffer.from(body).toString('base64');\nreturn [msg, null, null];",
+    "outputs": 3, "noerr": 0, "x": 340, "y": 120,
+    "wires": [["fk_intent"], ["fk_tx"], ["fk_deploycmd"]] },
 
   { "id": "fk_intent", "type": "exec", "z": "fk_tab", "name": "interpret-intent (OpenCode)",
     "command": "\"$FK_CONTROL_DIR/interpret-intent\"", "addpay": "payload", "append": "",
     "useSpawn": "false", "timer": "90", "winHide": false, "oldrc": false,
-    "x": 600, "y": 80, "wires": [["fk_validate"], [], []] },
+    "x": 590, "y": 80, "wires": [["fk_validate"], [], []] },
 
   { "id": "fk_validate", "type": "function", "z": "fk_tab", "name": "validate + confirm prompt",
-    "func": "const PROFILES = { 'bett-london': 'Bett London', 'tech-awards': 'Tech Awards', 'bett-brasil': 'Bett Brasil' };\nlet intent;\ntry { intent = JSON.parse(msg.payload); } catch (e) { intent = null; }\nfunction twiml(text) {\n    return `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Message>${text}</Message></Response>`;\n}\nif (!intent || !['deploy_profile', 'status', 'reject'].includes(intent.action)) {\n    msg.payload = twiml('Sorry - I could not understand that as a kiosk request.');\n    return msg;\n}\nif (intent.action === 'deploy_profile' && PROFILES[intent.profile]) {\n    flow.set('pending', { profile: intent.profile, label: PROFILES[intent.profile], sender: msg.sender, ts: Date.now() });\n    msg.payload = twiml(`Deploy the ${PROFILES[intent.profile]} profile to the event kiosks? Reply CONFIRM.`);\n    return msg;\n}\nif (intent.action === 'status') {\n    msg.payload = twiml('Deployments are live. Status reporting arrives with the kiosk health feed.');\n    return msg;\n}\nmsg.payload = twiml('I can only switch the kiosks between the approved event profiles (Bett London, Tech Awards, Bett Brasil).');\nreturn msg;",
-    "outputs": 1, "noerr": 0, "x": 850, "y": 80, "wires": [["fk_resp"]] },
-
-  { "id": "fk_resp", "type": "http response", "z": "fk_tab", "name": "TwiML reply",
-    "statusCode": "", "headers": { "content-type": "text/xml" },
-    "x": 1070, "y": 120, "wires": [] },
+    "func": "const PROFILES = { 'bett-london': 'Bett London', 'tech-awards': 'Tech Awards', 'bett-brasil': 'Bett Brasil' };\nconst chatId = flow.get('last_chat');\nlet intent;\ntry { intent = JSON.parse(msg.payload); } catch (e) { intent = null; }\nfunction reply(text) {\n    msg.payload = { chatId: chatId, type: 'message', content: text };\n    return msg;\n}\nif (!intent || !['deploy_profile', 'status', 'reject'].includes(intent.action)) {\n    return reply('Sorry - I could not understand that as a kiosk request.');\n}\nif (intent.action === 'deploy_profile' && PROFILES[intent.profile]) {\n    flow.set('pending', { profile: intent.profile, label: PROFILES[intent.profile], ts: Date.now() });\n    return reply(`Deploy the ${PROFILES[intent.profile]} profile to the event kiosks? Reply CONFIRM.`);\n}\nif (intent.action === 'status') {\n    return reply('Deployments are live. Status reporting arrives with the kiosk health feed.');\n}\nreturn reply('I can only switch the kiosks between the approved event profiles (Bett London, Tech Awards, Bett Brasil).');",
+    "outputs": 1, "noerr": 0, "x": 840, "y": 80, "wires": [["fk_tx"]] },
 
   { "id": "fk_deploycmd", "type": "function", "z": "fk_tab", "name": "prepare deploy",
     "func": "const APPROVED = ['bett-london', 'tech-awards', 'bett-brasil'];\nif (!APPROVED.includes(msg.profile)) { node.error('profile not approved: ' + msg.profile); return null; }\nmsg.payload = msg.profile;  // enum-validated token, safe to append\nreturn msg;",
-    "outputs": 1, "noerr": 0, "x": 600, "y": 200, "wires": [["fk_deploy"]] },
+    "outputs": 1, "noerr": 0, "x": 590, "y": 200, "wires": [["fk_deploy"]] },
 
   { "id": "fk_deploy", "type": "exec", "z": "fk_tab", "name": "deploy-kiosk",
     "command": "\"$FK_CONTROL_DIR/deploy-kiosk\" --profile", "addpay": "payload", "append": "",
     "useSpawn": "false", "timer": "1800", "winHide": false, "oldrc": false,
-    "x": 790, "y": 200, "wires": [["fk_result"], [], ["fk_result"]] },
+    "x": 780, "y": 200, "wires": [["fk_result"], [], ["fk_result"]] },
 
   { "id": "fk_result", "type": "function", "z": "fk_tab", "name": "compose completion",
-    "func": "// Runs twice per deploy (stdout + return-code outputs); act once, on the stdout payload.\nif (typeof msg.payload !== 'string' || !msg.payload.includes('run_finished')) { return null; }\nlet result = null;\nfor (const line of msg.payload.split('\\n')) {\n    try { const evt = JSON.parse(line); if (evt.event === 'run_finished') result = evt; } catch (e) { /* not json */ }\n}\nif (!result) { return null; }\nconst PROFILES = { 'bett-london': 'Bett London', 'tech-awards': 'Tech Awards', 'bett-brasil': 'Bett Brasil' };\nconst label = PROFILES[result.profile] || result.profile;\nconst text = result.ok\n    ? `Deployment complete. ${result.hosts_succeeded} of ${result.hosts_total} kiosks are online and running the ${label} profile.`\n    : `Deployment FAILED - the kiosks rolled back to the previous version. (${result.hosts_succeeded} of ${result.hosts_total} healthy.)`;\n\nconst sid = env.get('TWILIO_ACCOUNT_SID');\nconst token = env.get('TWILIO_AUTH_TOKEN');\nconst to = flow.get('last_sender') || env.get('DEFAULT_NOTIFY');\nmsg.url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;\nmsg.method = 'POST';\nmsg.headers = { 'Authorization': 'Basic ' + Buffer.from(sid + ':' + token).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' };\nmsg.payload = `To=${encodeURIComponent('whatsapp:' + to)}&From=${encodeURIComponent(env.get('TWILIO_WHATSAPP_FROM'))}&Body=${encodeURIComponent(text)}`;\nreturn msg;",
-    "outputs": 1, "noerr": 0, "x": 1000, "y": 200, "wires": [["fk_send"]] },
+    "func": "// Runs for stdout and return-code outputs; act once, on the stdout payload.\nif (typeof msg.payload !== 'string' || !msg.payload.includes('run_finished')) { return null; }\nlet result = null;\nfor (const line of msg.payload.split('\\n')) {\n    try { const evt = JSON.parse(line); if (evt.event === 'run_finished') result = evt; } catch (e) { /* not json */ }\n}\nif (!result) { return null; }\nconst PROFILES = { 'bett-london': 'Bett London', 'tech-awards': 'Tech Awards', 'bett-brasil': 'Bett Brasil' };\nconst label = PROFILES[result.profile] || result.profile;\nconst text = result.ok\n    ? `Deployment complete. ${result.hosts_succeeded} of ${result.hosts_total} kiosks are online and running the ${label} profile.`\n    : `Deployment FAILED - the kiosks rolled back to the previous version. (${result.hosts_succeeded} of ${result.hosts_total} healthy.)`;\nmsg.payload = { chatId: flow.get('last_chat'), type: 'message', content: text };\nreturn msg;",
+    "outputs": 1, "noerr": 0, "x": 990, "y": 200, "wires": [["fk_tx"]] },
 
-  { "id": "fk_send", "type": "http request", "z": "fk_tab", "name": "Twilio send",
-    "method": "use", "ret": "txt", "paytoqs": "ignore", "url": "", "tls": "",
-    "persist": false, "proxy": "", "authType": "", "senderr": false,
-    "x": 1190, "y": 200, "wires": [[]] }
+  { "id": "fk_tx", "type": "telegram sender", "z": "fk_tab", "name": "Telegram out",
+    "bot": "fk_bot", "haserroroutput": false, "outputs": 1,
+    "x": 1180, "y": 120, "wires": [[]] }
 ]
