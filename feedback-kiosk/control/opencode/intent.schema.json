@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kiosk deployment intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "profile", "targets", "reason"],
+  "properties": {
+    "action": { "enum": ["deploy_profile", "status", "reject"] },
+    "profile": { "enum": ["standard", "branded", "spanish", null] },
+    "targets": { "const": "event_kiosks" },
+    "reason": { "type": "string", "maxLength": 200 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "deploy_profile" } } },
+      "then": { "properties": { "profile": { "enum": ["standard", "branded", "spanish"] } } }
+    }
+  ]
+}
