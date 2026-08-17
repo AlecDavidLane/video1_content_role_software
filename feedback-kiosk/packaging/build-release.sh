@@ -11,7 +11,9 @@ VERSION="$(node -p "require('$APP/package.json').version")"
 
 echo "==> Building feedback-kiosk $VERSION"
 cd "$APP"
-npm ci
+# npm ci once a lockfile exists (deterministic); first ever build
+# generates it - commit package-lock.json after that build.
+if [ -f package-lock.json ]; then npm ci; else npm install; fi
 npm run fetch-models          # bundle emotion models into public/models
 rm -rf .next
 npm run build                 # output: 'standalone'
