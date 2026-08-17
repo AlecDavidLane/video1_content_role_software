@@ -19,3 +19,9 @@ backend/tl_commissioning_source/static/
 *.db-shm
 .venv/
 packaging/.cache/
+
+# Feedback kiosk build artifacts
+feedback-kiosk/app/node_modules/
+feedback-kiosk/app/.next/
+feedback-kiosk/app/public/models/
+feedback-kiosk/dist/
