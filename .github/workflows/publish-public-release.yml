@@ -1,0 +1,48 @@
+name: Publish public giveaway
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out private role repository
+        uses: actions/checkout@v4
+
+      - name: Build clean public export
+        run: |
+          python3 public-release/export_public.py /tmp/public-release
+
+      - name: Check out public giveaway repository
+        uses: actions/checkout@v4
+        with:
+          repository: AlecDavidLane/transition-layer-commissioning-source
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          path: public-repo
+
+      - name: Replace public repository contents
+        shell: bash
+        run: |
+          find public-repo -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/public-release/. public-repo/
+
+      - name: Commit and push public release
+        shell: bash
+        run: |
+          cd public-repo
+          git config user.name "Transition Layer Release Bot"
+          git config user.email "79085660+AlecDavidLane@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No public release changes to publish."
+            exit 0
+          fi
+
+          git commit -m "Public release from ${GITHUB_SHA::7}"
+          git push origin HEAD:main
