@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""interpret-intent - Node-RED's bridge to OpenCode.
+
+  interpret-intent <sender_b64> <text_b64>
+
+The message and sender arrive base64-encoded (shell-safe alphabet), so
+raw message text never touches a shell. OpenCode is invoked with a
+fixed argv (no shell) and is interpretation-only; its output is parsed
+as JSON and validated against hard enums before anything downstream
+sees it. If the opencode CLI is absent, a keyword fallback keeps the
+pipeline testable. Audit entries are appended for the monitor.
+"""
+import base64
+import datetime
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+AUDIT_LOG = Path(os.environ.get("FK_AUDIT_LOG", str(Path.home() / "fk-audit.jsonl")))
+PROFILES = ("bett-london", "tech-awards", "bett-brasil")
+ACTIONS = ("deploy_profile", "status", "reject")
+
+def audit(record):
+    try:
+        AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(AUDIT_LOG, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record) + "\n")
+    except OSError:
+        pass
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def fallback_intent(text):
+    t = text.lower()
+    if any(w in t for w in ("award", "judge", "gbta", "win", "competition")):
+        return {"action": "deploy_profile", "profile": "tech-awards",
+                "targets": "event_kiosks", "reason": "Deploy the Tech Awards profile (keyword match)"}
+    if any(w in t for w in ("brasil", "brazil", "portug")):
+        return {"action": "deploy_profile", "profile": "bett-brasil",
+                "targets": "event_kiosks", "reason": "Deploy the Bett Brasil profile (keyword match)"}
+    if any(w in t for w in ("london", "standard", "normal", "default", "star", "back")):
+        return {"action": "deploy_profile", "profile": "bett-london",
+                "targets": "event_kiosks", "reason": "Deploy the Bett London profile (keyword match)"}
+    if any(w in t for w in ("status", "ok?", "online", "running")):
+        return {"action": "status", "profile": None,
+                "targets": "event_kiosks", "reason": "Status request (keyword match)"}
+    return {"action": "reject", "profile": None,
+            "targets": "event_kiosks", "reason": "Not an approved request"}
+
+def opencode_intent(text):
+    prompt = (HERE / "opencode" / "intent-prompt.md").read_text(encoding="utf-8")
+    full = f"{prompt}\n\nIncoming message:\n{text}\n"
+    out = subprocess.run(
+        ["opencode", "run", full],
+        capture_output=True, text=True, timeout=60,
+    ).stdout
+    match = re.search(r"\{.*\}", out, re.S)
+    if not match:
+        raise ValueError("no JSON in OpenCode output")
+    return json.loads(match.group(0))
+
+def validate(intent):
+    if not isinstance(intent, dict):
+        return None
+    action = intent.get("action")
+    profile = intent.get("profile")
+    if action not in ACTIONS:
+        return None
+    if action == "deploy_profile" and profile not in PROFILES:
+        return None
+    if action != "deploy_profile":
+        profile = None
+    return {
+        "action": action,
+        "profile": profile,
+        "targets": "event_kiosks",
+        "reason": str(intent.get("reason", ""))[:200],
+    }
+
+def main():
+    if len(sys.argv) != 3:
+        print(json.dumps({"action": "reject", "profile": None,
+                          "targets": "event_kiosks", "reason": "bad invocation"}))
+        return 2
+    try:
+        sender = base64.b64decode(sys.argv[1]).decode("utf-8", "replace")
+        text = base64.b64decode(sys.argv[2]).decode("utf-8", "replace")
+    except Exception:
+        print(json.dumps({"action": "reject", "profile": None,
+                          "targets": "event_kiosks", "reason": "undecodable message"}))
+        return 2
+
+    audit({"ts": now(), "event": "message_received", "sender": sender, "text": text[:300]})
+
+    intent = None
+    engine = "opencode"
+    if shutil.which("opencode"):
+        try:
+            intent = validate(opencode_intent(text))
+        except Exception:
+            intent = None
+    if intent is None:
+        engine = "fallback"
+        intent = validate(fallback_intent(text))
+
+    audit({"ts": now(), "event": "intent", "sender": sender, "engine": engine, **intent})
+    print(json.dumps(intent))
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
