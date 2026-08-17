@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""deploy-kiosk - the ONLY deployment entry point for the
+natural-language layer (brief addendum).
+
+  deploy-kiosk --profile branded --targets event_kiosks
+
+Security properties:
+- --profile must be one of the approved names; --targets must match a
+  strict inventory-group pattern. Nothing else is accepted, so raw
+  message text can never influence what runs.
+- ansible-playbook is invoked with a fixed argv (no shell).
+- Every invocation is appended to the audit log.
+
+Output: newline-delimited JSON events on stdout for Node-RED / the
+terminal monitor: run_started, task, host_result, run_finished.
+Exit 0 = deployed and healthy; nonzero = failed (role rolls back).
+"""
+import argparse
+import datetime
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+APPROVED_PROFILES = ("standard", "branded", "spanish")
+TARGET_RE = re.compile(r"^[A-Za-z0-9_]{1,40}$")
+HERE = Path(__file__).resolve().parent
+ANSIBLE_DIR = HERE.parent / "ansible"
+AUDIT_LOG = Path(os.environ.get("FK_AUDIT_LOG", "/var/log/feedback-kiosk-control/audit.jsonl"))
+
+def emit(event, **fields):
+    print(json.dumps({"event": event, "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(), **fields}), flush=True)
+
+def audit(record):
+    try:
+        AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(AUDIT_LOG, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record) + "\n")
+    except OSError as exc:
+        emit("warning", detail=f"audit log unavailable: {exc}")
+
+def main():
+    ap = argparse.ArgumentParser(prog="deploy-kiosk")
+    ap.add_argument("--profile", required=True, choices=APPROVED_PROFILES)
+    ap.add_argument("--targets", default="event_kiosks")
+    ap.add_argument("--inventory", default=str(ANSIBLE_DIR / "inventory.ini"))
+    ap.add_argument("--requested-by", default="", help="audit: who asked (from Node-RED)")
+    args = ap.parse_args()
+
+    if not TARGET_RE.match(args.targets):
+        emit("run_finished", ok=False, error="invalid targets group name")
+        return 2
+
+    release = os.environ.get("FK_RELEASE", "")
+    if not release:
+        candidates = sorted((HERE.parent / "dist").glob("feedback-kiosk-*.tar.gz"))
+        release = str(candidates[-1]) if candidates else ""
+    sha_file = Path(release + ".sha256") if release else None
+    if not release or not Path(release).exists() or not sha_file.exists():
+        emit("run_finished", ok=False, error="release tarball/.sha256 not found (set FK_RELEASE)")
+        return 2
+    sha256 = sha_file.read_text().split()[0]
+
+    cmd = [
+        "ansible-playbook", "-i", args.inventory, str(ANSIBLE_DIR / "deploy.yml"),
+        "-e", f"@{ANSIBLE_DIR / 'profiles' / (args.profile + '.yml')}",
+        "-e", f"fk_release_src={release}",
+        "-e", f"fk_release_sha256={sha256}",
+        "-e", f"fk_targets={args.targets}",
+    ]
+    started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    emit("run_started", profile=args.profile, targets=args.targets,
+         release=Path(release).name, requested_by=args.requested_by)
+    audit({"ts": started, "action": "deploy_profile", "profile": args.profile,
+           "targets": args.targets, "release": Path(release).name,
+           "requested_by": args.requested_by, "status": "started"})
+
+    hosts = {}
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, cwd=str(ANSIBLE_DIR))
+    for line in proc.stdout:
+        line = line.rstrip("\n")
+        task = re.match(r"^TASK \[(.+)\] \*+$", line)
+        if task:
+            emit("task", name=task.group(1))
+        recap = re.match(
+            r"^(\S+)\s*:\s*ok=(\d+)\s+changed=(\d+)\s+unreachable=(\d+)\s+failed=(\d+)", line)
+        if recap:
+            host, ok, changed, unreachable, failed = recap.groups()
+            hosts[host] = {"ok": int(ok), "changed": int(changed),
+                           "unreachable": int(unreachable), "failed": int(failed)}
+            emit("host_result", host=host, **hosts[host])
+    rc = proc.wait()
+
+    succeeded = sum(1 for h in hosts.values() if h["failed"] == 0 and h["unreachable"] == 0)
+    result = {"ok": rc == 0, "profile": args.profile, "targets": args.targets,
+              "hosts_total": len(hosts), "hosts_succeeded": succeeded, "rc": rc}
+    emit("run_finished", **result)
+    audit({"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+           "action": "deploy_profile", "profile": args.profile,
+           "targets": args.targets, "requested_by": args.requested_by,
+           "status": "success" if rc == 0 else "failed", **result})
+    return 0 if rc == 0 else 1
+
+if __name__ == "__main__":
+    sys.exit(main())
