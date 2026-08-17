@@ -1,19 +1,53 @@
 {
   "_review": "Portuguese copy pending native review.",
-  "event": { "id": "bett-brasil-2026", "name": "Feedback Graffiti Art", "subtitle": "Como você avalia a Transition Layer?", "venue": "Bett Brasil" },
+  "event": {
+    "id": "bett-brasil-2026",
+    "name": "Feedback Graffiti Art",
+    "subtitle": "Como você avalia a Transition Layer?",
+    "venue": "Bett Brasil"
+  },
   "locale": "pt-BR",
-  "branding": { "logo": "/transition-layer-logo.png", "background": "/brand/background.jpg", "accent": "#00D4AA", "sponsor_mark": "/brand/sponsor.png", "credits_on_public_screen": false },
+  "branding": {
+    "logo": "/transition-layer-logo.png",
+    "background": "/brand/background.png",
+    "accent": "#00D4AA",
+    "sponsor_mark": "/brand/sponsor.webp",
+    "credits_on_public_screen": false
+  },
   "copy_overrides": {
     "idle_hint": "Dê uma nota de 1 a 5",
     "input_title": "Como você avalia a Transition Layer?"
   },
-  "input": { "mode": "rating", "rating": {
-    "style": "stars",
-    "labels": ["1", "2", "3", "4", "5"],
-    "faces": ["angry", "sad", "surprised", "calm", "joy"]
-  } },
-  "timeouts": { "idle_seconds": 90, "result_seconds": 25, "input_seconds": 120 },
-  "privacy": { "store_text": true },
-  "voice": { "enabled": false },
+  "input": {
+    "mode": "rating",
+    "rating": {
+      "style": "stars",
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "faces": [
+        "angry",
+        "sad",
+        "surprised",
+        "calm",
+        "joy"
+      ]
+    }
+  },
+  "timeouts": {
+    "idle_seconds": 90,
+    "result_seconds": 25,
+    "input_seconds": 120
+  },
+  "privacy": {
+    "store_text": true
+  },
+  "voice": {
+    "enabled": false
+  },
   "config_version": "bett-brasil-1"
 }
