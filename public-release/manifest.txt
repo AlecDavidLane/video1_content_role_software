@@ -1,0 +1,13 @@
+# Only these paths are allowed into the public giveaway repository.
+# Keep this list explicit: public export is allow-list based, never deny-list based.
+LICENSE
+.gitignore
+backend
+frontend
+packaging
+scripts/smoke-test.sh
+docs/install-and-test.md
+docs/operator-guide.md
+docs/runbook.md
+docs/api-openavc-integration.md
+integrations/openavc
