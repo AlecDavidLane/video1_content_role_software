@@ -1,0 +1,18 @@
+{
+  "event": { "id": "bett-london-2026", "name": "Feedback Graffiti Art", "subtitle": "How do you rate Transition Layer?", "venue": "Bett, ExCeL London" },
+  "locale": "en-GB",
+  "branding": { "logo": "/transition-layer-logo.png", "background": "/brand/background.jpg", "accent": "#00D4AA", "sponsor_mark": "/brand/sponsor.png", "credits_on_public_screen": false },
+  "copy_overrides": {
+    "idle_hint": "Give us a rating out of 5",
+    "input_title": "How do you rate Transition Layer?"
+  },
+  "input": { "mode": "rating", "rating": {
+    "style": "stars",
+    "labels": ["1", "2", "3", "4", "5"],
+    "faces": ["angry", "sad", "surprised", "calm", "joy"]
+  } },
+  "timeouts": { "idle_seconds": 90, "result_seconds": 25, "input_seconds": 120 },
+  "privacy": { "store_text": true },
+  "voice": { "enabled": false },
+  "config_version": "bett-london-1"
+}

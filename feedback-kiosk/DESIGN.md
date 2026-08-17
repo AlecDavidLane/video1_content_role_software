@@ -77,6 +77,20 @@ discarded per brief §2/§4.
   `profiles/spanish.yml` — same role, different variables. Feedback DB
   and browser profile are never touched by updates.
 
+## Concept revision: Bett show rating kiosks
+
+The three deployments are now (owner, 2026-08-17): **bett-london**
+(Feedback Graffiti Art - rate Transition Layer 1-5 stars, en-GB, TL
+teal `#00D4AA`, Bett sponsor mark), **tech-awards** (Are we going to
+win? - GBTA likelihood scale Very unlikely→Very likely, `#472a9f`),
+**bett-brasil** (bett-london in pt-BR). Visitor input is now a
+per-profile `input.mode`: `rating` (five buttons mapped 1..5 →
+angry,sad,surprised,calm,joy - no keyboard, no model in the visitor
+path) or `text` (the original typed + emotion-classification journey,
+kept fully working). Ratings are stored as responses with
+engine='rating', text "n/5 (label)". es-ES remains supported; pt-BR
+added.
+
 ## Addendum: natural-language remote deployment
 
 Owner-confirmed scope: **WhatsApp (Twilio)** carries the messages; a

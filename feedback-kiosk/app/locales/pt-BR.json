@@ -1,0 +1,38 @@
+{
+  "_review": "PENDING NATIVE REVIEW - Portuguese (Brazil) visitor copy (concept: Bett Brasil).",
+  "start_button": "Toque para começar",
+  "idle_hint": "Dê uma nota de 1 a 5",
+  "input_title": "Como você avalia a Transition Layer?",
+  "input_placeholder": "Escreva algumas palavras sobre como você se sente…",
+  "submit_button": "Pinte!",
+  "cancel_button": "Recomeçar",
+  "processing_lines": [
+    "Lendo sua avaliação…",
+    "Sentindo o clima…",
+    "Misturando as cores…"
+  ],
+  "result_title": "Aqui está sua obra",
+  "thank_you": "Obrigado por compartilhar. Aproveite o evento!",
+  "privacy_notice": "Sua avaliação é armazenada de forma anônima para nos ajudar a entender a opinião dos visitantes. Sem nomes, sem dados de contato.",
+  "privacy_notice_totals_only": "Nada é armazenado além de uma contagem anônima de avaliações.",
+  "input_empty_nudge": "Escolha uma nota primeiro",
+  "new_visitor_button": "Próximo visitante",
+  "emotion_labels": {
+    "joy": "alegria",
+    "calm": "calma",
+    "sad": "tristeza",
+    "angry": "raiva",
+    "surprised": "surpresa"
+  },
+  "operator": {
+    "pin_prompt": "PIN do operador",
+    "status_title": "Status do quiosque",
+    "export_csv": "Exportar CSV",
+    "export_json": "Exportar JSON",
+    "clear_data": "Apagar todos os comentários",
+    "clear_confirm": "Excluir todas as respostas salvas? Esta ação não pode ser desfeita.",
+    "restart_app": "Reiniciar quiosque",
+    "back_to_kiosk": "Voltar ao quiosque"
+  },
+  "robot_bubble": "Me conte o que você achou"
+}

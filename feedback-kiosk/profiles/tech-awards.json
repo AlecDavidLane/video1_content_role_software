@@ -1,0 +1,18 @@
+{
+  "event": { "id": "gbta-2026", "name": "Are we going to win?", "subtitle": "We love the Global Business Tech Awards!", "venue": "Bett, ExCeL London" },
+  "locale": "en-GB",
+  "branding": { "logo": "/transition-layer-logo.png", "background": "/brand/background.jpg", "accent": "#472a9f", "sponsor_mark": "/brand/sponsor.png", "credits_on_public_screen": false },
+  "copy_overrides": {
+    "idle_hint": "Do I need to prepare my speech?",
+    "input_title": "How likely is Transition Layer to win the International Startup Competition?"
+  },
+  "input": { "mode": "rating", "rating": {
+    "style": "labels",
+    "labels": ["Very unlikely", "Unlikely", "Not sure", "Likely", "Very likely"],
+    "faces": ["angry", "sad", "surprised", "calm", "joy"]
+  } },
+  "timeouts": { "idle_seconds": 90, "result_seconds": 25, "input_seconds": 120 },
+  "privacy": { "store_text": true },
+  "voice": { "enabled": false },
+  "config_version": "gbta-2026-1"
+}

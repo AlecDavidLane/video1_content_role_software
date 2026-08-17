@@ -49,7 +49,26 @@ export default function Kiosk() {
     return () => clearTimeout(timerRef.current)
   }, [mode, cfg, arm, resetToIdle])
 
-  // -- visitor flow ------------------------------------------------------
+  // -- rating flow: 1..5 straight onto the five faces --------------------
+  const submitRating = useCallback((index) => {
+    const rating = cfg.input.rating
+    const chosenFace = rating.faces[index]
+    setFace(chosenFace)
+    setMode('processing')
+    fetch('/api/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: `${index + 1}/5 (${rating.labels[index]})`,
+        emotion: chosenFace,
+        confidence: 1,
+        engine: 'rating',
+        input_method: 'typed',
+      }),
+    }).catch(() => {})
+  }, [cfg])
+
+  // -- text flow ---------------------------------------------------------
   const submit = useCallback(async () => {
     const trimmed = text.trim()
     if (!trimmed) return setNudge(true)
@@ -112,6 +131,14 @@ export default function Kiosk() {
   if (!cfg) return <main className="center" />
 
   const accent = cfg.branding.accent || 'var(--accent)'
+  // Dark accents (e.g. the awards purple) need light button text.
+  const accentText = (() => {
+    const m = /^#([0-9a-f]{6})$/i.exec(accent)
+    if (!m) return '#04211b'
+    const n = parseInt(m[1], 16)
+    const lum = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)
+    return lum < 140 ? '#ffffff' : '#04211b'
+  })()
   const privacy = cfg.privacy.store_text ? S.privacy_notice : S.privacy_notice_totals_only
 
   return (
@@ -144,13 +171,39 @@ export default function Kiosk() {
         {mode === 'idle' && (
           <section className="panel">
             <p className="hint">{S.idle_hint}</p>
-            <button className="big" style={{ background: accent }} onClick={() => setMode('input')}>
+            <button className="big" style={{ background: accent, color: accentText }} onClick={() => setMode('input')}>
               {S.start_button}
             </button>
           </section>
         )}
 
-        {mode === 'input' && (
+        {mode === 'input' && cfg.input.mode === 'rating' && (
+          <section className="panel">
+            <h2>{S.input_title}</h2>
+            <div className="ratings">
+              {cfg.input.rating.labels.map((label, i) => (
+                <button
+                  key={i}
+                  className="rate"
+                  style={{ borderColor: accent }}
+                  onClick={() => submitRating(i)}
+                >
+                  {cfg.input.rating.style === 'stars' ? (
+                    <>
+                      <span className="stars" style={{ color: accent }}>{'★'.repeat(i + 1)}</span>
+                      <span className="rate-label">{label}</span>
+                    </>
+                  ) : (
+                    <span className="rate-label big-label">{label}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <button className="quiet" onClick={resetToIdle}>{S.cancel_button}</button>
+          </section>
+        )}
+
+        {mode === 'input' && cfg.input.mode === 'text' && (
           <section className="panel">
             <h2>{S.input_title}</h2>
             <div className={`entry${nudge ? ' nudge' : ''}`}>
@@ -171,7 +224,7 @@ export default function Kiosk() {
           <section className="panel">
             <h2>{S.result_title}</h2>
             <p className="hint">{S.thank_you}</p>
-            <button className="big" style={{ background: accent }} onClick={resetToIdle}>
+            <button className="big" style={{ background: accent, color: accentText }} onClick={resetToIdle}>
               {S.new_visitor_button}
             </button>
           </section>
@@ -200,6 +253,14 @@ export default function Kiosk() {
           .placeholder { color: var(--text-dim); }
           .nudge { border-color: ${'#ffb74d'}; }
           .privacy { color: var(--text-dim); font-size: 0.85rem; text-align: center; }
+          .ratings { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; width: 100%; }
+          .rate { display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 6px; min-width: 150px; min-height: 96px; padding: 12px 20px;
+            background: var(--surface); border: 2px solid; border-radius: 16px; color: var(--text); }
+          .rate:active { transform: scale(0.97); }
+          .stars { font-size: 1.7rem; letter-spacing: 2px; }
+          .rate-label { color: var(--text-dim); font-size: 1rem; }
+          .big-label { color: var(--text); font-size: 1.25rem; font-weight: 600; }
         `}</style>
       </main>
     </>

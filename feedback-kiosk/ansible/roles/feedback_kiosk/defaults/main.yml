@@ -10,8 +10,8 @@ fk_release_src: ""
 fk_release_sha256: ""
 
 # Which event profile to deploy: file at ../../profiles/<name>.json
-# (standard|branded|spanish map to v1|branded-event|es-event).
-fk_profile: standard
+# (approved names: bett-london | tech-awards | bett-brasil).
+fk_profile: bett-london
 
 # Directory ON THE CONTROLLER with brand assets for this profile
 # (copied to /opt/feedback-kiosk/brand-assets/<profile>/ and served at
@@ -32,6 +32,6 @@ fk_manage_dconf: true
 fk_node_major: 20
 
 fk_profile_map:
-  standard: v1
-  branded: branded-event
-  spanish: es-event
+  bett-london: bett-london
+  tech-awards: tech-awards
+  bett-brasil: bett-brasil

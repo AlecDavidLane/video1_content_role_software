@@ -1,4 +1,0 @@
----
-fk_profile: branded
-# Brand pack from the owner: logo.png, background.jpg, sponsor.png
-fk_brand_assets_src: "{{ playbook_dir }}/brand-assets/branded"

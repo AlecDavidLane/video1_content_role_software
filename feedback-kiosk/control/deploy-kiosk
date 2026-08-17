@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-APPROVED_PROFILES = ("standard", "branded", "spanish")
+APPROVED_PROFILES = ("bett-london", "tech-awards", "bett-brasil")
 TARGET_RE = re.compile(r"^[A-Za-z0-9_]{1,40}$")
 HERE = Path(__file__).resolve().parent
 ANSIBLE_DIR = HERE.parent / "ansible"

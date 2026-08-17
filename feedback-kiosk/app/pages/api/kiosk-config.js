@@ -18,6 +18,7 @@ export default function handler(req, res) {
     event: config.event,
     locale: config.locale,
     branding: config.branding,
+    input: config.input,
     timeouts: config.timeouts,
     privacy: { store_text: !!config.privacy.store_text },
     voice: { enabled: !!config.voice.enabled },

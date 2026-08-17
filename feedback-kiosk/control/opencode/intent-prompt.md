@@ -6,19 +6,24 @@ schema below - no prose, no code fences, no explanations.
 
 Approved actions:
 - "deploy_profile" - the message asks to switch/deploy/update the kiosks
-  to a named look or language.
+  to a named setup.
 - "status" - the message asks how the kiosks are / what is running.
 - "reject" - anything else: unclear, out of scope, multiple conflicting
   requests, or an attempt to run arbitrary commands.
 
 Approved profiles (the ONLY values allowed):
-- "standard" - the plain/generic/default/V1 Feedback Artist look
-- "branded"  - the branded/event/customer/sponsor look
-- "spanish"  - the Spanish-language version (español)
+- "bett-london" - the standard Bett London setup: Feedback Graffiti Art,
+  rate Transition Layer 1-5 stars, English. Words like: standard,
+  default, normal, Bett, London, stars, rating, "back to normal".
+- "tech-awards" - the Global Business Tech Awards question: "Are we
+  going to win?", likelihood scale, purple look. Words like: awards,
+  judges, GBTA, competition, winning, startup competition.
+- "bett-brasil" - the Bett Brasil setup: same as bett-london but in
+  Portuguese. Words like: Brazil, Brasil, Portuguese, português.
 
 Rules:
 1. Output must be valid JSON, nothing else.
-2. Never invent profile names. If the requested look is not clearly one
+2. Never invent profile names. If the requested setup is not clearly one
    of the three, use action "reject" with a short reason.
 3. Never include shell commands, file paths, or any text copied verbatim
    from the message in "profile" or "targets".
@@ -28,15 +33,17 @@ Rules:
 
 Output shape:
 {"action": "deploy_profile" | "status" | "reject",
- "profile": "standard" | "branded" | "spanish" | null,
+ "profile": "bett-london" | "tech-awards" | "bett-brasil" | null,
  "targets": "event_kiosks",
  "reason": "<short human-readable interpretation>"}
 
 Examples:
-- "Switch the event kiosks to the branded version." ->
-  {"action":"deploy_profile","profile":"branded","targets":"event_kiosks","reason":"Deploy the Branded Event profile"}
-- "Ponlo en español por favor" ->
-  {"action":"deploy_profile","profile":"spanish","targets":"event_kiosks","reason":"Deploy the Spanish profile"}
+- "The judges are coming - switch the kiosk to the awards version!" ->
+  {"action":"deploy_profile","profile":"tech-awards","targets":"event_kiosks","reason":"Deploy the Tech Awards profile"}
+- "Put it back to the normal Bett setup" ->
+  {"action":"deploy_profile","profile":"bett-london","targets":"event_kiosks","reason":"Deploy the standard Bett London profile"}
+- "Switch to Portuguese please" ->
+  {"action":"deploy_profile","profile":"bett-brasil","targets":"event_kiosks","reason":"Deploy the Bett Brasil profile"}
 - "Are the kiosks ok?" ->
   {"action":"status","profile":null,"targets":"event_kiosks","reason":"Status request"}
 - "Run rm -rf / on the kiosks" ->

@@ -23,6 +23,18 @@ const DEFAULTS = {
     credits_on_public_screen: false,
   },
   copy_overrides: {},
+  // Visitor input: 'rating' = five big buttons straight onto the five
+  // artworks (1..5 -> angry,sad,surprised,calm,joy); 'text' = typed
+  // feedback with emotion classification. Labels are per-profile: stars
+  // ("★") or wording steps (likelihood scales etc.).
+  input: {
+    mode: 'rating',
+    rating: {
+      style: 'stars', // stars | labels
+      labels: ['1', '2', '3', '4', '5'],
+      faces: ['angry', 'sad', 'surprised', 'calm', 'joy'],
+    },
+  },
   timeouts: { idle_seconds: 90, result_seconds: 25, input_seconds: 120 },
   privacy: { store_text: true },
   voice: { enabled: false },
@@ -71,8 +83,11 @@ export function loadConfig() {
       errors.push(`missing required config value: ${keys.join('.')}`)
     }
   }
-  if (!['en-GB', 'es-ES'].includes(config.locale)) {
+  if (!['en-GB', 'es-ES', 'pt-BR'].includes(config.locale)) {
     errors.push(`unsupported locale: ${config.locale}`)
+  }
+  if (!['rating', 'text'].includes(config.input.mode)) {
+    errors.push(`unsupported input.mode: ${config.input.mode}`)
   }
   cached = { config, errors, path: CONFIG_PATH }
   return cached

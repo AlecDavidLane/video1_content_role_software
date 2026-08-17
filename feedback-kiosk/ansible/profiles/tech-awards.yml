@@ -1,0 +1,3 @@
+---
+fk_profile: tech-awards
+fk_brand_assets_src: "{{ playbook_dir }}/brand-assets/tech-awards"
