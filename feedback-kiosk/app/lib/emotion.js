@@ -12,8 +12,9 @@ import { ES_LEXICON } from './lexicon-es'
 // Bundled model per locale; paths resolve under public/models at build
 // time (scripts/fetch-models.mjs). Empty = lexicon-only for that locale.
 const MODEL_BY_LOCALE = {
-  'en-GB': 'distilbert-emotion-en',
+  'en-GB': 'emotion-en',
   'es-ES': 'sentiment-multilingual',
+  'pt-BR': 'sentiment-multilingual',
 }
 
 const LEXICON_BY_LOCALE = {
