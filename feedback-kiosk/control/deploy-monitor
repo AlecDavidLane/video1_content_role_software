@@ -18,7 +18,7 @@ RED = "\033[31m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
 RESET = "\033[0m"
-AUDIT_LOG = os.environ.get("FK_AUDIT_LOG", "/var/log/feedback-kiosk-control/audit.jsonl")
+AUDIT_LOG = os.environ.get("FK_AUDIT_LOG", os.path.expanduser("~/fk-audit.jsonl"))
 
 def banner():
     print(f"{ACCENT}{BOLD}")
