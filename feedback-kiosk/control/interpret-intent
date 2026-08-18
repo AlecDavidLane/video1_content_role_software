@@ -44,7 +44,8 @@ def fallback_intent(text):
     if any(w in t for w in ("brasil", "brazil", "portug")):
         return {"action": "deploy_profile", "profile": "bett-brasil",
                 "targets": "event_kiosks", "reason": "Deploy the Bett Brasil profile (keyword match)"}
-    if any(w in t for w in ("london", "standard", "normal", "default", "star", "back")):
+    if any(w in t for w in ("london", "standard", "normal", "default", "star",
+                            "back", "bett", "graffiti", "feedback artist")):
         return {"action": "deploy_profile", "profile": "bett-london",
                 "targets": "event_kiosks", "reason": "Deploy the Bett London profile (keyword match)"}
     if any(w in t for w in ("status", "ok?", "online", "running")):
