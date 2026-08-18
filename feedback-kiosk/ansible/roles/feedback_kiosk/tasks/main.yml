@@ -206,6 +206,7 @@
     dest: /opt/feedback-kiosk/current
     state: link
     force: true
+  notify: reload kiosk browser
 
 - name: Restart application on the new release
   ansible.builtin.systemd:
