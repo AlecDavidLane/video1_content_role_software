@@ -1,0 +1,45 @@
+name: Build kiosk release
+
+# Central release building (no hand-built artifacts): push a tag like
+# kiosk-v0.1.1 (matching feedback-kiosk/app/package.json) and GitHub
+# builds the offline release tarball on Ubuntu 24.04 and attaches it,
+# with its sha256, to a GitHub Release. The control machine downloads
+# it into feedback-kiosk/dist/ and deploy-kiosk ships it unchanged.
+
+on:
+  push:
+    tags: ["kiosk-v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build release (deps, bundled models, standalone build, tarball)
+        run: ./feedback-kiosk/packaging/build-release.sh
+
+      - name: Show checksum
+        run: cat feedback-kiosk/dist/*.sha256
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: feedback-kiosk-release
+          path: |
+            feedback-kiosk/dist/feedback-kiosk-*.tar.gz
+            feedback-kiosk/dist/*.sha256
+          retention-days: 30
+
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/kiosk-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            feedback-kiosk/dist/feedback-kiosk-*.tar.gz
+            feedback-kiosk/dist/*.sha256
