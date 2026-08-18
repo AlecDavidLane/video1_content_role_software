@@ -57,7 +57,11 @@ def show(evt):
 def main():
     banner()
     if "--follow" in sys.argv:
-        # Tail the audit log (Node-RED writes message/intent events there too).
+        # Tail the audit log (Node-RED writes message/intent events there
+        # too). The file only exists after the first event - wait for it
+        # rather than crashing on a fresh install.
+        while not os.path.exists(AUDIT_LOG):
+            time.sleep(0.5)
         with open(AUDIT_LOG, "r", encoding="utf-8") as fh:
             fh.seek(0, 2)
             while True:
