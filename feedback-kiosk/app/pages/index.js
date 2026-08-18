@@ -237,8 +237,8 @@ export default function Kiosk() {
           .center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
           .corner { position: fixed; top: 0; left: 0; width: 90px; height: 90px; z-index: 50; }
           .top { display: flex; align-items: center; gap: 24px; }
-          .logo { height: 56px; }
-          .sponsor { height: 44px; margin-left: auto; }
+          .logo { height: 224px; max-width: 34vw; object-fit: contain; }
+          .sponsor { height: 176px; max-width: 26vw; object-fit: contain; margin-left: auto; }
           h1 { margin: 0; font-size: 2.2rem; }
           .sub { margin: 2px 0 0; color: var(--text-dim); }
           .stage { flex: 1; min-height: 0; }

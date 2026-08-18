@@ -1,6 +1,6 @@
 {
   "name": "feedback-kiosk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Feedback Artist event kiosk - offline touchscreen appliance",
   "scripts": {
