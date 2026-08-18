@@ -95,8 +95,13 @@ def main():
     rc = proc.wait()
 
     succeeded = sum(1 for h in hosts.values() if h["failed"] == 0 and h["unreachable"] == 0)
-    result = {"ok": rc == 0, "profile": args.profile, "targets": args.targets,
+    # Zero matched hosts is a failure, not a success: an empty/missing
+    # inventory must never report "deployment complete".
+    ok = rc == 0 and len(hosts) > 0 and succeeded == len(hosts)
+    result = {"ok": ok, "profile": args.profile, "targets": args.targets,
               "hosts_total": len(hosts), "hosts_succeeded": succeeded, "rc": rc}
+    if ok is False and len(hosts) == 0 and rc == 0:
+        result["error"] = "no hosts matched the inventory/targets"
     emit("run_finished", **result)
     audit({"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
            "action": "deploy_profile", "profile": args.profile,
