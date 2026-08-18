@@ -88,20 +88,18 @@
   register: fk_tar_stat
   failed_when: fk_tar_stat.stat.checksum != fk_release_sha256
 
-- name: Read release version from tarball
-  ansible.builtin.shell: |
-    set -o pipefail
-    tar tzf /opt/feedback-kiosk/release-incoming.tar.gz | head -1 | cut -d/ -f1
-  args: { executable: /bin/bash }
-  register: fk_relname
-  changed_when: false
+# The tarball is named for its top-level directory by build-release.sh,
+# so the release name comes from the filename - no remote probing.
+- name: Derive release name
+  ansible.builtin.set_fact:
+    fk_release_name: "{{ fk_release_src | basename | regex_replace('\\.tar\\.gz$', '') }}"
 
 - name: Extract release to versioned directory
   ansible.builtin.unarchive:
     src: /opt/feedback-kiosk/release-incoming.tar.gz
     dest: /opt/feedback-kiosk/releases/
     remote_src: true
-    creates: "/opt/feedback-kiosk/releases/{{ fk_relname.stdout }}/RELEASE"
+    creates: "/opt/feedback-kiosk/releases/{{ fk_release_name }}/RELEASE"
 
 - name: Remember current release (for rollback)
   ansible.builtin.stat:
@@ -111,7 +109,7 @@
 - name: Record previous release target
   ansible.builtin.set_fact:
     fk_previous_release: "{{ fk_current_link.stat.lnk_target | default('') }}"
-    fk_new_release: "/opt/feedback-kiosk/releases/{{ fk_relname.stdout }}"
+    fk_new_release: "/opt/feedback-kiosk/releases/{{ fk_release_name }}"
 
 # ---------- configuration, assets, translations ------------------------------
 - name: Load profile JSON from the repo (controller side)
@@ -243,7 +241,7 @@
 - name: Fail the play when validation failed
   ansible.builtin.fail:
     msg: >-
-      Release {{ fk_relname.stdout }} failed its health check
+      Release {{ fk_release_name }} failed its health check
       {{ '- rolled back to ' + fk_previous_release if fk_previous_release else '- no previous release to roll back to' }}.
   when: fk_health is failed
 
@@ -253,7 +251,7 @@
     dest: /var/log/feedback-kiosk/deploy-{{ ansible_date_time.iso8601_basic_short }}.json
     mode: "0644"
     content: "{{ {
-      'release': fk_relname.stdout,
+      'release': fk_release_name,
       'sha256': fk_release_sha256,
       'profile': fk_profile,
       'config_version': fk_config_json.config_version,
@@ -278,7 +276,7 @@
     owner: "{{ fk_service_user }}"
     mode: "0644"
     content: "{{ {
-      'release': fk_relname.stdout,
+      'release': fk_release_name,
       'profile': fk_profile,
       'deployed_at': ansible_date_time.iso8601,
     } | to_nice_json }}"
